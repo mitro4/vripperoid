@@ -12,6 +12,9 @@ interface PostDao {
     @Query("SELECT * FROM post ORDER BY addedOn DESC")
     fun getAll(): Flow<List<Post>>
 
+    @Query("UPDATE post SET downloaded = downloaded + 1 WHERE id = :postId")
+    suspend fun incrementDownloaded(postId: Long)
+
     @Query("SELECT * FROM post WHERE id = :id")
     suspend fun getById(id: Long): Post?
 

@@ -6,6 +6,7 @@ import android.os.Environment
 import android.os.IBinder
 import kotlinx.coroutines.*
 import me.vripper.android.data.ImageDao
+import me.vripper.android.data.PostDao
 import me.vripper.android.domain.Status
 import me.vripper.android.host.*
 import me.vripper.android.util.LogUtils
@@ -15,6 +16,7 @@ import java.io.File
 class DownloadService : Service() {
 
     private val imageDao: ImageDao by inject()
+    private val postDao: PostDao by inject()
     private val dPicMeHost: DPicMeHost by inject()
     private val imageBamHost: ImageBamHost by inject()
     private val imageTwistHost: ImageTwistHost by inject()
@@ -91,6 +93,7 @@ class DownloadService : Service() {
                                 }
                                 
                                 image.status = Status.FINISHED
+                                postDao.incrementDownloaded(image.postEntityId)
                             } else {
                                 LogUtils.e(TAG, "No host found for ${image.url}")
                                 image.status = Status.ERROR

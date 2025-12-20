@@ -13,7 +13,9 @@ val appModule = module {
         Room.databaseBuilder(
             androidContext(),
             AppDatabase::class.java, "vripper-db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
     single { get<AppDatabase>().postDao() }
     single { get<AppDatabase>().imageDao() }

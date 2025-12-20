@@ -46,7 +46,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             downloadDirectory = "VRipper/${postItem.threadId}",
                             addedOn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date()),
                             folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_"),
-                            status = Status.STOPPED
+                            status = Status.STOPPED,
+                            previewUrls = postItem.imageItemList.take(4).map { it.thumbUrl }
                         )
                         val postId = postDao.insert(post)
                         

@@ -21,5 +21,6 @@ data class Post(
     var status: Status = Status.STOPPED,
     var done: Int = 0,
     var size: Long = -1,
-    var downloaded: Long = 0,
+    var downloaded: Int = 0,
+    val previewUrls: List<String> = emptyList()
 )
