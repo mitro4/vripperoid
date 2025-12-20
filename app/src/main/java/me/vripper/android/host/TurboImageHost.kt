@@ -8,8 +8,8 @@ import org.w3c.dom.Node
 
 class TurboImageHost : Host("turboimagehost.com", 14) {
     private val TAG = "TurboImageHost"
-    private val TITLE_XPATH = "//div[contains(@class,'titleFullS')]/h1"
-    private val IMG_XPATH = "//img[@id='imageid']"
+    private val TITLE_XPATH = "//*[local-name()='div' and contains(@class,'titleFullS')]/*[local-name()='h1']"
+    private val IMG_XPATH = "//*[local-name()='img' and @id='imageid']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)

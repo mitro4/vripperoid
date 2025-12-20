@@ -7,7 +7,7 @@ import me.vripper.android.util.XpathUtils
 
 class PixxxelsHost : Host("pixxxels.cc", 12) {
     private val TAG = "PixxxelsHost"
-    private val IMG_XPATH = "//*[@id='download']"
+    private val IMG_XPATH = "//*[local-name()='a' and @id='download']"
     private val TITLE_XPATH = "//*[contains(@class,'imagename')]"
 
     override fun resolve(image: Image): Pair<String, String> {

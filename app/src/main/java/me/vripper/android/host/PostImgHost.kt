@@ -7,8 +7,8 @@ import me.vripper.android.util.XpathUtils
 
 class PostImgHost : Host("postimg.cc", 13) {
     private val TAG = "PostImgHost"
-    private val TITLE_XPATH = "//span[contains(@class,'imagename')]"
-    private val IMG_XPATH = "//a[@id='download']"
+    private val TITLE_XPATH = "//*[local-name()='span' and contains(@class,'imagename')]"
+    private val IMG_XPATH = "//*[local-name()='a' and @id='download']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)

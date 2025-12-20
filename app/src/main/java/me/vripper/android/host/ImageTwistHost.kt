@@ -8,7 +8,7 @@ import org.w3c.dom.Node
 
 class ImageTwistHost : Host("imagetwist.com", 3) {
     private val TAG = "ImageTwistHost"
-    private val IMG_XPATH = "//img[contains(@class, 'img')]"
+    private val IMG_XPATH = "//*[local-name()='img' and contains(@class, 'img')]"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)

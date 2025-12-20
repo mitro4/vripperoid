@@ -11,7 +11,7 @@ import java.util.UUID
 
 class ImageBamHost : Host("imagebam.com", 2) {
     private val TAG = "ImageBamHost"
-    private val IMG_XPATH = "//img[contains(@class,'main-image')]"
+    private val IMG_XPATH = "//*[local-name()='img' and contains(@class,'main-image')]"
     private val CONTINUE_XPATH = "//*[contains(text(), 'Continue')]"
 
     override fun resolve(image: Image): Pair<String, String> {

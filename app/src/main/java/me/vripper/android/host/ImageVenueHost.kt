@@ -8,8 +8,8 @@ import org.w3c.dom.Node
 
 class ImageVenueHost : Host("imagevenue.com", 4) {
     private val TAG = "ImageVenueHost"
-    private val IMG_XPATH = "//a[@data-toggle='full']/img[@id='main-image']"
-    private val CONTINUE_BUTTON_XPATH = "//a[@title='Continue to ImageVenue']"
+    private val IMG_XPATH = "//*[local-name()='a' and @data-toggle='full']/*[local-name()='img' and @id='main-image']"
+    private val CONTINUE_BUTTON_XPATH = "//*[local-name()='a' and @title='Continue to ImageVenue']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)

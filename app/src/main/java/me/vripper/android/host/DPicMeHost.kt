@@ -10,7 +10,7 @@ import java.util.UUID
 
 class DPicMeHost : Host("dpic.me", 1) {
     private val TAG = "DPicMeHost"
-    private val IMG_XPATH = "//img[@id='pic']"
+    private val IMG_XPATH = "//*[local-name()='img' and @id='pic']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)

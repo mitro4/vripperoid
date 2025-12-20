@@ -8,7 +8,7 @@ import org.w3c.dom.Node
 
 class PixhostHost : Host("pixhost.to", 10) {
     private val TAG = "PixhostHost"
-    private val IMG_XPATH = "//img[@id='image']"
+    private val IMG_XPATH = "//*[local-name()='img' and @id='image']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)

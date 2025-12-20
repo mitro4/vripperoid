@@ -10,7 +10,7 @@ import java.net.URI
 
 class PimpandhostHost : Host("pimpandhost.com", 9) {
     private val TAG = "PimpandhostHost"
-    private val IMG_XPATH = "//img[contains(@class, 'original')]"
+    private val IMG_XPATH = "//*[local-name()='img' and contains(@class, 'original')]"
 
     override fun resolve(image: Image): Pair<String, String> {
         val newUrl: String = try {

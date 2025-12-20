@@ -8,7 +8,7 @@ import org.w3c.dom.Node
 
 class ImageZillaHost : Host("imagezilla.net", 5) {
     private val TAG = "ImageZillaHost"
-    private val IMG_XPATH = "//img[@id='photo']"
+    private val IMG_XPATH = "//*[local-name()='img' and @id='photo']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)
