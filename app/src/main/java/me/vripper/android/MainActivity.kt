@@ -34,6 +34,8 @@ import me.vripper.android.ui.MainViewModel
 import org.koin.android.ext.android.inject
 import org.koin.androidx.compose.get
 
+import android.provider.DocumentsContract
+
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
@@ -105,7 +107,7 @@ fun SettingsScreen(onDismiss: () -> Unit) {
     val settingsStore: SettingsStore = get()
     val context = LocalContext.current
     var maxConcurrent by remember { mutableStateOf(settingsStore.maxGlobalConcurrent.toFloat()) }
-    var downloadPath by remember { mutableStateOf(settingsStore.downloadPathUri ?: "Default (Pictures/VRipper)") }
+    var downloadPath by remember { mutableStateOf(getReadablePathFromUri(context, settingsStore.downloadPathUri)) }
 
     val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
@@ -114,7 +116,7 @@ fun SettingsScreen(onDismiss: () -> Unit) {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
             settingsStore.downloadPathUri = uri.toString()
-            downloadPath = uri.toString()
+            downloadPath = getReadablePathFromUri(context, uri.toString())
         }
     }
 
@@ -244,4 +246,26 @@ fun AddUrlDialog(onDismiss: () -> Unit, onAdd: (String) -> Unit) {
             }
         }
     )
+}
+
+fun getReadablePathFromUri(context: android.content.Context, uriString: String?): String {
+    if (uriString == null) return "Default (Pictures/VRipper)"
+    try {
+        val uri = Uri.parse(uriString)
+        val docId = DocumentsContract.getTreeDocumentId(uri)
+        // docId is usually "primary:Pictures" or "ABCD-1234:Pictures"
+        val split = docId.split(":")
+        if (split.size > 1) {
+            val type = split[0]
+            val path = split[1]
+            if (type == "primary") {
+                return "Internal Storage/$path"
+            } else {
+                return "SD Card ($type)/$path"
+            }
+        }
+        return docId
+    } catch (e: Exception) {
+        return Uri.decode(uriString)
+    }
 }
