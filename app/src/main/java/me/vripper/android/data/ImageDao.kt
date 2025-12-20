@@ -30,4 +30,7 @@ interface ImageDao {
 
     @Query("SELECT COUNT(*) FROM image WHERE postEntityId = :postId AND status = 'PENDING'")
     suspend fun countPendingByPostId(postId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM image WHERE postEntityId = :postId AND status = 'ERROR'")
+    suspend fun countErrorByPostId(postId: Long): Int
 }

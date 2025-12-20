@@ -6,5 +6,6 @@ enum class Status(val stringValue: String) {
     FINISHED("Finished"),
     ERROR("Error"),
     STOPPED("Stopped"),
-    ALREADY_DOWNLOADED("Already Downloaded")
+    ALREADY_DOWNLOADED("Already Downloaded"),
+    NOT_FULL_FINISHED("Not Full Finished")
 }

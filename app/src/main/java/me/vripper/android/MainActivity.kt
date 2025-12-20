@@ -12,9 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -23,7 +25,10 @@ import coil.request.ImageRequest
 import me.vripper.android.domain.Post
 import me.vripper.android.domain.Status
 import me.vripper.android.service.DownloadService
+import me.vripper.android.settings.SettingsStore
 import me.vripper.android.ui.MainViewModel
+import org.koin.android.ext.android.inject
+import org.koin.androidx.compose.get
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -40,24 +45,42 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     var showDialog by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val posts by viewModel.posts.collectAsState(initial = emptyList())
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("VRipper") },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
-                Text("+")
+            if (!showSettings) {
+                FloatingActionButton(onClick = { showDialog = true }) {
+                    Text("+")
+                }
             }
         }
     ) { padding ->
-        LazyColumn(contentPadding = padding) {
-            items(posts) { post ->
-                PostItem(post, 
-                    onStart = { viewModel.startDownload(post) },
-                    onDelete = { viewModel.deletePost(post) }
-                )
+        if (showSettings) {
+            SettingsScreen(onDismiss = { showSettings = false })
+        } else {
+            LazyColumn(contentPadding = padding) {
+                items(posts) { post ->
+                    PostItem(post, 
+                        onStart = { viewModel.startDownload(post) },
+                        onDelete = { viewModel.deletePost(post) }
+                    )
+                }
             }
         }
         
@@ -69,6 +92,41 @@ fun MainScreen(viewModel: MainViewModel) {
                     showDialog = false
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(onDismiss: () -> Unit) {
+    val settingsStore: SettingsStore = get()
+    var maxConcurrent by remember { mutableStateOf(settingsStore.maxGlobalConcurrent.toFloat()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text("Max Concurrent Downloads: ${maxConcurrent.toInt()}")
+        Slider(
+            value = maxConcurrent,
+            onValueChange = { 
+                maxConcurrent = it
+                settingsStore.maxGlobalConcurrent = it.toInt()
+            },
+            valueRange = 1f..20f,
+            steps = 19
+        )
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Back")
         }
     }
 }

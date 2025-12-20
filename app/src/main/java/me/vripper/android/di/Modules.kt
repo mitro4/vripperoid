@@ -3,12 +3,15 @@ package me.vripper.android.di
 import androidx.room.Room
 import me.vripper.android.data.AppDatabase
 import me.vripper.android.host.*
+import me.vripper.android.settings.SettingsStore
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 import java.util.concurrent.TimeUnit
 
 val appModule = module {
+    single { SettingsStore(androidContext()) }
+
     single {
         Room.databaseBuilder(
             androidContext(),
