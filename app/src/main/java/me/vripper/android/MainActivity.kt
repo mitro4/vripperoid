@@ -109,6 +109,7 @@ fun SettingsScreen(onDismiss: () -> Unit) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         
+        Text("Global concurrent downloads", style = MaterialTheme.typography.bodyLarge)
         Text("Max Concurrent Downloads: ${maxConcurrent.toInt()}")
         Slider(
             value = maxConcurrent,
