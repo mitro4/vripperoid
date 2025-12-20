@@ -16,7 +16,10 @@ import org.koin.core.component.inject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.regex.Pattern
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application), KoinComponent {
 
@@ -72,6 +75,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             postDao.update(updatedPost)
                         }
                         
+                        // Check if folder already exists on disk
+                        val folderExists = checkFolderExists(finalFolderName)
+                        val initialStatus = if (folderExists) Status.ALREADY_DOWNLOADED else Status.STOPPED
+                        val initialDownloaded = if (folderExists) post.total else 0
+                        
+                        if (folderExists) {
+                             val updatedPost = post.copy(
+                                 id = postId, 
+                                 folderName = finalFolderName, 
+                                 status = Status.ALREADY_DOWNLOADED,
+                                 downloaded = post.total
+                             )
+                             postDao.update(updatedPost)
+                        }
+                        
                         val images = postItem.imageItemList.mapIndexed { index, imageItem ->
                             Image(
                                 url = imageItem.mainUrl,
@@ -79,7 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                                 host = imageItem.host,
                                 index = index,
                                 postEntityId = postId,
-                                status = Status.STOPPED
+                                status = if (folderExists) Status.ALREADY_DOWNLOADED else Status.STOPPED
                             )
                         }
                         imageDao.insertAll(images)
@@ -111,12 +129,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
     }
     
     private fun extractThreadId(url: String): Long? {
-        val pattern = Pattern.compile("threads/(\\d+)")
+        val pattern = java.util.regex.Pattern.compile("threads/(\\d+)")
         val matcher = pattern.matcher(url)
         return if (matcher.find()) {
             matcher.group(1)?.toLong()
         } else {
             null
+        }
+    }
+
+    private fun checkFolderExists(folderName: String): Boolean {
+        val context = getApplication<Application>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val projection = arrayOf(MediaStore.Images.Media._ID)
+            val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
+            val selectionArgs = arrayOf("%VRipper/$folderName/%")
+            
+            context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                return cursor.count > 0
+            }
+            return false
+        } else {
+            val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val targetDir = File(picturesDir, "VRipper/$folderName")
+            return targetDir.exists()
         }
     }
 }

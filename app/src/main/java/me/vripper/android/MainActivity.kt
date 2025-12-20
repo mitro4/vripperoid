@@ -98,7 +98,7 @@ fun PostItem(post: Post, onStart: () -> Unit, onDelete: () -> Unit) {
                 }
             }
 
-            if (post.status == Status.DOWNLOADING || post.status == Status.PENDING || post.status == Status.FINISHED) {
+            if (post.status == Status.DOWNLOADING || post.status == Status.PENDING || post.status == Status.FINISHED || post.status == Status.ALREADY_DOWNLOADED) {
                  val progress = if (post.total > 0) post.downloaded.toFloat() / post.total.toFloat() else 0f
                  LinearProgressIndicator(
                      progress = progress,
