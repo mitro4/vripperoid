@@ -101,7 +101,7 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.IS_PENDING, 0)
                 }
-                context.contentResolver.update(uri!!, contentValues, null, null)
+                context.contentResolver.update(uri, contentValues, null, null)
             }
         }
         

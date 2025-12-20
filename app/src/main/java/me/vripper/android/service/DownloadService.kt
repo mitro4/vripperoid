@@ -86,7 +86,7 @@ class DownloadService : Service() {
                                 // Use app-specific storage to avoid permission issues
                                 val folderName = "VRipper/${image.postEntityId}"
                                 
-                                host.download(image, applicationContext, folderName) { downloaded, total ->
+                                host.download(image, applicationContext, folderName) { _, _ ->
                                     // Update progress
                                 }
                                 
