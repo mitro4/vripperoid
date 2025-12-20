@@ -78,7 +78,7 @@ fun PostItem(post: Post, onStart: () -> Unit, onDelete: () -> Unit) {
     val context = LocalContext.current
     Card(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = post.postTitle, style = MaterialTheme.typography.titleMedium)
+            Text(text = post.folderName, style = MaterialTheme.typography.titleMedium)
             
             if (post.previewUrls.isNotEmpty()) {
                 LazyRow(

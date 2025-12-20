@@ -49,7 +49,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             status = Status.STOPPED,
                             previewUrls = postItem.imageItemList.take(4).map { it.thumbUrl }
                         )
+                        
+                        // Check if a folder with this name already exists in DB to append post ID
+                        // This logic should be better handled, but for now we will rely on PostDao returning the ID
+                        // and we can update folderName if needed, but the requirement says "if in the thread multiple posts with images"
+                        // which implies we might want to check existing posts for this thread.
+                        
+                        // Let's first insert to get ID
                         val postId = postDao.insert(post)
+                        
+                        // Check if there are other posts for this thread
+                        val count = postDao.countByThreadId(postItem.threadId)
+                        val finalFolderName = if (count > 1) {
+                             "${post.folderName}_${postItem.postId}"
+                        } else {
+                             post.folderName
+                        }
+                        
+                        // Update post with final folder name if changed
+                        if (finalFolderName != post.folderName) {
+                            val updatedPost = post.copy(id = postId, folderName = finalFolderName)
+                            postDao.update(updatedPost)
+                        }
                         
                         val images = postItem.imageItemList.mapIndexed { index, imageItem ->
                             Image(

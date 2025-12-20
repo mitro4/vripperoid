@@ -86,7 +86,12 @@ class DownloadService : Service() {
                             
                             if (host != null) {
                                 // Use app-specific storage to avoid permission issues
-                                val folderName = "VRipper/${image.postEntityId}"
+                                val post = postDao.getById(image.postEntityId)
+                                val folderName = if (post != null) {
+                                    "VRipper/${post.folderName}"
+                                } else {
+                                    "VRipper/${image.postEntityId}"
+                                }
                                 
                                 host.download(image, applicationContext, folderName) { _, _ ->
                                     // Update progress

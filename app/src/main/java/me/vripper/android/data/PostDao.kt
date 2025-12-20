@@ -26,4 +26,7 @@ interface PostDao {
 
     @Query("DELETE FROM post WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM post WHERE vgThreadId = :threadId")
+    suspend fun countByThreadId(threadId: Long): Int
 }
