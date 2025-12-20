@@ -8,7 +8,8 @@ import org.w3c.dom.Node
 
 class ViprImHost : Host("vipr.im", 15) {
     private val TAG = "ViprImHost"
-    private val IMG_XPATH = "//img[contains(@class, 'pic')]"
+    // Use local-name() to handle XHTML namespace
+    private val IMG_XPATH = "//*[local-name()='img' and contains(@class, 'pic')]"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)
