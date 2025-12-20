@@ -183,7 +183,7 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
             outputStream.close()
             body.close()
             
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri != null && customUriString == null) {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.IS_PENDING, 0)
                 }
