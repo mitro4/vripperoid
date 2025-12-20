@@ -20,11 +20,15 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import java.io.File
+// import androidx.documentfile.provider.DocumentFile
+import android.net.Uri
+import me.vripper.android.settings.SettingsStore
 
 class MainViewModel(application: Application) : AndroidViewModel(application), KoinComponent {
 
     private val postDao: PostDao by inject()
     private val imageDao: ImageDao by inject()
+    private val settingsStore: SettingsStore by inject()
     val posts = postDao.getAll()
 
     fun addPost(url: String) {
@@ -140,6 +144,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
 
     private fun checkFolderExists(folderName: String): Boolean {
         val context = getApplication<Application>()
+        val customUri = settingsStore.downloadPathUri
+        /*
+        if (customUri != null) {
+            try {
+                val treeUri = Uri.parse(customUri)
+                val docFile = DocumentFile.fromTreeUri(context, treeUri)
+                if (docFile != null) {
+                    val vripperDir = docFile.findFile("VRipper")
+                    return vripperDir?.findFile(folderName)?.exists() == true
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return false
+        }
+        */
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val projection = arrayOf(MediaStore.Images.Media._ID)
             val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"

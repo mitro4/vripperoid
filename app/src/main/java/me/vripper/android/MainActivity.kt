@@ -20,6 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Folder
+import android.net.Uri
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import me.vripper.android.domain.Post
@@ -99,7 +103,20 @@ fun MainScreen(viewModel: MainViewModel) {
 @Composable
 fun SettingsScreen(onDismiss: () -> Unit) {
     val settingsStore: SettingsStore = get()
+    val context = LocalContext.current
     var maxConcurrent by remember { mutableStateOf(settingsStore.maxGlobalConcurrent.toFloat()) }
+    var downloadPath by remember { mutableStateOf(settingsStore.downloadPathUri ?: "Default (Pictures/VRipper)") }
+
+    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            settingsStore.downloadPathUri = uri.toString()
+            downloadPath = uri.toString()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -119,6 +136,21 @@ fun SettingsScreen(onDismiss: () -> Unit) {
             },
             valueRange = 1f..20f,
             steps = 19
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Download Directory", style = MaterialTheme.typography.bodyLarge)
+        
+        OutlinedTextField(
+            value = downloadPath,
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                IconButton(onClick = { launcher.launch(null) }) {
+                    Icon(Icons.Filled.Folder, contentDescription = "Select Directory")
+                }
+            }
         )
         
         Spacer(modifier = Modifier.weight(1f))

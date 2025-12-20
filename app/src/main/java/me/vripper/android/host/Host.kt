@@ -5,10 +5,13 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+// import androidx.documentfile.provider.DocumentFile
+import android.net.Uri
 import me.vripper.android.domain.Image
 import me.vripper.android.exception.HostException
 import me.vripper.android.util.HtmlUtils
 import me.vripper.android.util.LogUtils
+import me.vripper.android.settings.SettingsStore
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.koin.core.component.KoinComponent
@@ -21,6 +24,7 @@ import java.io.OutputStream
 abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
 
     private val client: OkHttpClient by inject()
+    private val settingsStore: SettingsStore by inject()
     private val TAG = "Host"
 
     abstract fun resolve(image: Image): Pair<String, String>
@@ -53,9 +57,41 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
 
         val outputStream: OutputStream
         val file: File?
-        var uri: android.net.Uri? = null
+        var uri: Uri? = null
+        
+        val customUriString = settingsStore.downloadPathUri
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        /*
+        if (customUriString != null) {
+            val treeUri = Uri.parse(customUriString)
+            val docFile = DocumentFile.fromTreeUri(context, treeUri) ?: throw HostException("Invalid tree URI")
+            
+            // folderName passed here is usually "VRipper/ThreadTitle" or just "ThreadTitle"
+            // We split by "/" to handle nested directories
+            var currentDir = docFile
+            val parts = folderName.split("/")
+            parts.forEach { part ->
+                if (part.isNotEmpty()) {
+                    var nextDir = currentDir.findFile(part)
+                    if (nextDir == null || !nextDir.isDirectory) {
+                        nextDir = currentDir.createDirectory(part) ?: throw HostException("Failed to create directory $part")
+                    }
+                    currentDir = nextDir!!
+                }
+            }
+            
+            // Check if file exists, if so delete? or fail?
+            // Usually we overwrite or create unique. Host usually overwrites.
+            val existing = currentDir.findFile(fileName)
+            if (existing != null && existing.exists()) {
+                existing.delete()
+            }
+            
+            val targetFile = currentDir.createFile(type.strValue, fileName) ?: throw HostException("Failed to create file $fileName")
+            uri = targetFile.uri
+            outputStream = context.contentResolver.openOutputStream(uri) ?: throw HostException("Failed to open stream")
+            file = null
+        } else */ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, type.strValue)
