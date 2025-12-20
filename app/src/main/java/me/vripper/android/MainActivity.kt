@@ -110,17 +110,19 @@ fun PostItem(post: Post, onStart: () -> Unit, onDelete: () -> Unit) {
             Text(text = "Images: ${post.downloaded}/${post.total}", style = MaterialTheme.typography.bodySmall)
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                IconButton(onClick = {
-                     val intent = Intent(Intent.ACTION_VIEW)
-                     intent.setType("image/*")
-                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                     try {
-                         context.startActivity(intent)
-                     } catch (e: Exception) {
-                         // Handle error
-                     }
-                }) {
-                     Icon(Icons.Filled.Visibility, contentDescription = "Open Gallery")
+                if (post.downloaded > 0) {
+                    IconButton(onClick = {
+                         val intent = Intent(Intent.ACTION_VIEW)
+                         intent.setType("image/*")
+                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                         try {
+                             context.startActivity(intent)
+                         } catch (e: Exception) {
+                             // Handle error
+                         }
+                    }) {
+                         Icon(Icons.Filled.Visibility, contentDescription = "Open Gallery")
+                    }
                 }
             
                 if (post.status == Status.STOPPED) {

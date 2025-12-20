@@ -94,6 +94,16 @@ class DownloadService : Service() {
                                 
                                 image.status = Status.FINISHED
                                 postDao.incrementDownloaded(image.postEntityId)
+                                
+                                // Check if all images are finished for this post
+                                val remaining = imageDao.countPendingByPostId(image.postEntityId)
+                                if (remaining == 0) {
+                                    val post = postDao.getById(image.postEntityId)
+                                    if (post != null) {
+                                        post.status = Status.FINISHED
+                                        postDao.update(post)
+                                    }
+                                }
                             } else {
                                 LogUtils.e(TAG, "No host found for ${image.url}")
                                 image.status = Status.ERROR
