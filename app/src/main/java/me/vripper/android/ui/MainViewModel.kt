@@ -19,8 +19,8 @@ import java.util.Locale
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.DocumentsContract
 import java.io.File
-// import androidx.documentfile.provider.DocumentFile
 import android.net.Uri
 import me.vripper.android.settings.SettingsStore
 
@@ -145,21 +145,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
     private fun checkFolderExists(folderName: String): Boolean {
         val context = getApplication<Application>()
         val customUri = settingsStore.downloadPathUri
-        /*
         if (customUri != null) {
             try {
                 val treeUri = Uri.parse(customUri)
-                val docFile = DocumentFile.fromTreeUri(context, treeUri)
-                if (docFile != null) {
-                    val vripperDir = docFile.findFile("VRipper")
-                    return vripperDir?.findFile(folderName)?.exists() == true
+                val docId = DocumentsContract.getTreeDocumentId(treeUri)
+                
+                // We need to check if folderName exists as a child of root
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId)
+                
+                context.contentResolver.query(
+                    childrenUri,
+                    arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                    null, null, null
+                )?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                        if (nameIndex >= 0) {
+                            val name = cursor.getString(nameIndex)
+                            // folderName passed here is usually just the thread name for check
+                            if (name == folderName) {
+                                return true
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
             return false
         }
-        */
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val projection = arrayOf(MediaStore.Images.Media._ID)

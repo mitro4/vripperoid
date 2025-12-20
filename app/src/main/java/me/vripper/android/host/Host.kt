@@ -5,7 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-// import androidx.documentfile.provider.DocumentFile
+import android.provider.DocumentsContract
 import android.net.Uri
 import me.vripper.android.domain.Image
 import me.vripper.android.exception.HostException
@@ -61,37 +61,87 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
         
         val customUriString = settingsStore.downloadPathUri
 
-        /*
         if (customUriString != null) {
-            val treeUri = Uri.parse(customUriString)
-            val docFile = DocumentFile.fromTreeUri(context, treeUri) ?: throw HostException("Invalid tree URI")
-            
-            // folderName passed here is usually "VRipper/ThreadTitle" or just "ThreadTitle"
-            // We split by "/" to handle nested directories
-            var currentDir = docFile
-            val parts = folderName.split("/")
-            parts.forEach { part ->
-                if (part.isNotEmpty()) {
-                    var nextDir = currentDir.findFile(part)
-                    if (nextDir == null || !nextDir.isDirectory) {
-                        nextDir = currentDir.createDirectory(part) ?: throw HostException("Failed to create directory $part")
+            try {
+                val treeUri = Uri.parse(customUriString)
+                val docId = DocumentsContract.getTreeDocumentId(treeUri)
+                val rootUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
+                
+                var currentDocId = docId
+                val parts = folderName.split("/")
+                
+                parts.forEach { part ->
+                    if (part.isNotEmpty()) {
+                        var foundId: String? = null
+                        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
+                        
+                        context.contentResolver.query(
+                            childrenUri,
+                            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                            null, null, null
+                        )?.use { cursor ->
+                            while (cursor.moveToNext()) {
+                                val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                                val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                                if (nameIndex >= 0 && idIndex >= 0) {
+                                    val name = cursor.getString(nameIndex)
+                                    if (name == part) {
+                                        foundId = cursor.getString(idIndex)
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (foundId == null) {
+                            val parentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, currentDocId)
+                            val newDir = DocumentsContract.createDocument(context.contentResolver, parentUri, DocumentsContract.Document.MIME_TYPE_DIR, part)
+                                ?: throw HostException("Failed to create directory $part")
+                            foundId = DocumentsContract.getDocumentId(newDir)
+                        }
+                        currentDocId = foundId!!
                     }
-                    currentDir = nextDir!!
                 }
+                
+                // Now create file in currentDocId
+                // Check if exists
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
+                var existingFileUri: Uri? = null
+                 context.contentResolver.query(
+                    childrenUri,
+                    arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                    null, null, null
+                )?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                        val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                        if (nameIndex >= 0 && idIndex >= 0) {
+                            val name = cursor.getString(nameIndex)
+                            if (name == fileName) {
+                                val id = cursor.getString(idIndex)
+                                existingFileUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, id)
+                                break
+                            }
+                        }
+                    }
+                }
+                
+                if (existingFileUri != null) {
+                    DocumentsContract.deleteDocument(context.contentResolver, existingFileUri!!)
+                }
+                
+                val parentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, currentDocId)
+                val newFileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, type.strValue, fileName)
+                    ?: throw HostException("Failed to create file $fileName")
+                    
+                uri = newFileUri
+                outputStream = context.contentResolver.openOutputStream(uri) ?: throw HostException("Failed to open stream")
+                file = null
+            } catch (e: Exception) {
+                LogUtils.e(TAG, "Error writing to custom directory", e)
+                throw HostException("Error writing to custom directory: ${e.message}")
             }
-            
-            // Check if file exists, if so delete? or fail?
-            // Usually we overwrite or create unique. Host usually overwrites.
-            val existing = currentDir.findFile(fileName)
-            if (existing != null && existing.exists()) {
-                existing.delete()
-            }
-            
-            val targetFile = currentDir.createFile(type.strValue, fileName) ?: throw HostException("Failed to create file $fileName")
-            uri = targetFile.uri
-            outputStream = context.contentResolver.openOutputStream(uri) ?: throw HostException("Failed to open stream")
-            file = null
-        } else */ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, type.strValue)
