@@ -126,45 +126,62 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
     private fun deletePostFiles(post: Post) {
         val context = getApplication<Application>()
         val customUri = settingsStore.downloadPathUri
-        val folderName = post.folderName
+        // Use the same path convention as DownloadService
+        val fullPath = "VRipper/${post.folderName}"
 
         try {
             if (customUri != null) {
                 val treeUri = Uri.parse(customUri)
                 val docId = DocumentsContract.getTreeDocumentId(treeUri)
-                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId)
                 
-                var targetId: String? = null
+                var currentDocId = docId
+                val parts = fullPath.split("/")
+                var targetUri: Uri? = null
                 
-                context.contentResolver.query(
-                    childrenUri,
-                    arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-                    null, null, null
-                )?.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                        val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                        if (nameIndex >= 0 && idIndex >= 0) {
-                            val name = cursor.getString(nameIndex)
-                            if (name == folderName) {
-                                targetId = cursor.getString(idIndex)
-                                break
+                // Traverse to find the target directory
+                for (i in parts.indices) {
+                    val part = parts[i]
+                    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
+                    var foundId: String? = null
+                    
+                    context.contentResolver.query(
+                        childrenUri,
+                        arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                        null, null, null
+                    )?.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                            val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                            if (nameIndex >= 0 && idIndex >= 0) {
+                                val name = cursor.getString(nameIndex)
+                                if (name == part) {
+                                    foundId = cursor.getString(idIndex)
+                                    break
+                                }
                             }
                         }
                     }
+                    
+                    if (foundId != null) {
+                        currentDocId = foundId
+                        if (i == parts.lastIndex) {
+                            targetUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, foundId)
+                        }
+                    } else {
+                        // Path not found
+                        break
+                    }
                 }
                 
-                if (targetId != null) {
-                     val targetUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, targetId)
+                if (targetUri != null) {
                      DocumentsContract.deleteDocument(context.contentResolver, targetUri)
                 }
                 
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // MediaStore deletion is tricky, we can delete items but deleting folder is implicit.
-                // We should query all images in that folder and delete them.
+                // MediaStore deletion
                 val projection = arrayOf(MediaStore.Images.Media._ID)
                 val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
-                val selectionArgs = arrayOf("%VRipper/$folderName/%")
+                val selectionArgs = arrayOf("%$fullPath/%")
                 
                 val idsToDelete = mutableListOf<Long>()
                 
@@ -186,13 +203,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                     try {
                         context.contentResolver.delete(uri, null, null)
                     } catch (e: Exception) {
-                         // Might need RecoverableSecurityException handling for Android 10/11 if not app-owned
                          e.printStackTrace()
                     }
                 }
             } else {
                 val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                val targetDir = File(picturesDir, "VRipper/$folderName")
+                val targetDir = File(picturesDir, fullPath)
                 if (targetDir.exists()) {
                     targetDir.deleteRecursively()
                 }
