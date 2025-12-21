@@ -20,3 +20,5 @@ app/build/
 *.ap_
 *.dex
 *.class
+
+release-key.jks
