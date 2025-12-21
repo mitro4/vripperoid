@@ -28,6 +28,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.activity.compose.BackHandler
 import me.vripperoid.android.domain.Post
 import me.vripperoid.android.domain.Status
 import me.vripperoid.android.service.DownloadService
@@ -80,6 +81,9 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     ) { padding ->
         if (showSettings) {
+            BackHandler {
+                showSettings = false
+            }
             SettingsScreen(onDismiss = { showSettings = false })
         } else {
             LazyColumn(contentPadding = padding) {
