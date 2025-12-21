@@ -36,11 +36,46 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
         
         LogUtils.d(TAG, "Downloading $name from $url")
 
-        val request = Request.Builder().url(url).header("Referer", image.url).build()
-        val response = client.newCall(request).execute()
+        var retries = settingsStore.retryCount
+        var response: okhttp3.Response? = null
+        
+        while (retries >= 0) {
+            try {
+                val request = Request.Builder().url(url).header("Referer", image.url).build()
+                response = client.newCall(request).execute()
+                
+                if (response.code == 503) {
+                    response.close()
+                    if (retries > 0) {
+                        LogUtils.d(TAG, "Got 503, retrying in 3s... ($retries retries left)")
+                        Thread.sleep(3000)
+                        retries--
+                        continue
+                    }
+                }
+                
+                if (!response.isSuccessful) {
+                     response.close()
+                     throw HostException("Failed to download ${image.url}: ${response.code}")
+                }
+                
+                // Success or non-retriable error (handled above if not successful)
+                break
+                
+            } catch (e: Exception) {
+                if (retries > 0 && e !is HostException) { // Don't retry HostException unless we want to cover network errors too
+                     // For now only 503 as requested, but network errors usually good to retry.
+                     // The requirement specifically says "If 503 error received".
+                     // So we only handle 503 explicitly in the loop above.
+                     // If execute() throws IOException (timeout, no connection), we rethrow for now.
+                     throw e
+                }
+                throw e
+            }
+        }
 
-        if (!response.isSuccessful) {
-            throw HostException("Failed to download ${image.url}: ${response.code}")
+        if (response == null || !response.isSuccessful) {
+             throw HostException("Failed to download ${image.url}: ${response?.code ?: "Unknown"}")
         }
 
         val body = response.body ?: throw HostException("Empty body")

@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Folder
 import android.net.Uri
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import me.vripperoid.android.domain.Post
 import me.vripperoid.android.domain.Status
 import me.vripperoid.android.service.DownloadService
@@ -108,6 +110,8 @@ fun SettingsScreen(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var maxConcurrent by remember { mutableStateOf(settingsStore.maxGlobalConcurrent.toFloat()) }
     var downloadPath by remember { mutableStateOf(getReadablePathFromUri(context, settingsStore.downloadPathUri)) }
+    var deleteFromStorage by remember { mutableStateOf(settingsStore.deleteFromStorage) }
+    var retryCount by remember { mutableStateOf(settingsStore.retryCount.toString()) }
 
     val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
@@ -153,6 +157,37 @@ fun SettingsScreen(onDismiss: () -> Unit) {
                     Icon(Icons.Filled.Folder, contentDescription = "Select Directory")
                 }
             }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = deleteFromStorage,
+                onCheckedChange = { 
+                    deleteFromStorage = it
+                    settingsStore.deleteFromStorage = it
+                }
+            )
+            Text("Delete from storage when deleting post", style = MaterialTheme.typography.bodyLarge)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Retry count (503 error)", style = MaterialTheme.typography.bodyLarge)
+        OutlinedTextField(
+            value = retryCount,
+            onValueChange = { 
+                if (it.all { char -> char.isDigit() }) {
+                    retryCount = it
+                    if (it.isNotEmpty()) {
+                        settingsStore.retryCount = it.toInt()
+                    }
+                }
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
         )
         
         Spacer(modifier = Modifier.weight(1f))

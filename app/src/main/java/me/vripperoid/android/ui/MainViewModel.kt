@@ -115,7 +115,89 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
     
     fun deletePost(post: Post) {
         viewModelScope.launch(Dispatchers.IO) {
+            if (settingsStore.deleteFromStorage) {
+                deletePostFiles(post)
+            }
             postDao.delete(post.id)
+        }
+    }
+
+    private fun deletePostFiles(post: Post) {
+        val context = getApplication<Application>()
+        val customUri = settingsStore.downloadPathUri
+        val folderName = post.folderName
+
+        try {
+            if (customUri != null) {
+                val treeUri = Uri.parse(customUri)
+                val docId = DocumentsContract.getTreeDocumentId(treeUri)
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId)
+                
+                var targetId: String? = null
+                
+                context.contentResolver.query(
+                    childrenUri,
+                    arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                    null, null, null
+                )?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                        val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                        if (nameIndex >= 0 && idIndex >= 0) {
+                            val name = cursor.getString(nameIndex)
+                            if (name == folderName) {
+                                targetId = cursor.getString(idIndex)
+                                break
+                            }
+                        }
+                    }
+                }
+                
+                if (targetId != null) {
+                     val targetUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, targetId)
+                     DocumentsContract.deleteDocument(context.contentResolver, targetUri)
+                }
+                
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // MediaStore deletion is tricky, we can delete items but deleting folder is implicit.
+                // We should query all images in that folder and delete them.
+                val projection = arrayOf(MediaStore.Images.Media._ID)
+                val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
+                val selectionArgs = arrayOf("%VRipper/$folderName/%")
+                
+                val idsToDelete = mutableListOf<Long>()
+                
+                context.contentResolver.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
+                    selectionArgs,
+                    null
+                )?.use { cursor ->
+                    val idColumn = cursor.getColumnIndex(MediaStore.Images.Media._ID)
+                    while (cursor.moveToNext()) {
+                        idsToDelete.add(cursor.getLong(idColumn))
+                    }
+                }
+                
+                idsToDelete.forEach { id ->
+                    val uri = android.content.ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                    try {
+                        context.contentResolver.delete(uri, null, null)
+                    } catch (e: Exception) {
+                         // Might need RecoverableSecurityException handling for Android 10/11 if not app-owned
+                         e.printStackTrace()
+                    }
+                }
+            } else {
+                val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val targetDir = File(picturesDir, "VRipper/$folderName")
+                if (targetDir.exists()) {
+                    targetDir.deleteRecursively()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
     
