@@ -21,7 +21,18 @@ class ThreadLookupAPIParser(private val threadId: Long, private val baseUrl: Str
         val url = "$baseUrl/vr.php?t=$threadId"
         LogUtils.d(TAG, "Parsing $url")
         
-        val request = Request.Builder().url(url).build()
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Cache-Control", "max-age=0")
+            .header("Connection", "keep-alive")
+            .header("Upgrade-Insecure-Requests", "1")
+            .header("Sec-Fetch-Dest", "document")
+            .header("Sec-Fetch-Mode", "navigate")
+            .header("Sec-Fetch-Site", "none")
+            .header("Sec-Fetch-User", "?1")
+            .build()
         val response = client.newCall(request).execute()
         
         if (!response.isSuccessful) {
