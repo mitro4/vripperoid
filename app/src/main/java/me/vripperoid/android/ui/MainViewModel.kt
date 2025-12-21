@@ -40,7 +40,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                     val parser = ThreadLookupAPIParser(threadId, host)
                     val threadItem = parser.parse()
                     
+                    val isBatchMultiple = threadItem.postItemList.size > 1
+
                     threadItem.postItemList.forEach { postItem ->
+                        if (postDao.countByVgPostId(postItem.postId) > 0) return@forEach
+
+                        val existingCount = postDao.countByThreadId(postItem.threadId)
+                        val forceSuffix = isBatchMultiple || existingCount > 0
+
+                        var folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_")
+                        if (forceSuffix) {
+                            folderName += "_${postItem.postId}"
+                        }
+                        
                         val post = Post(
                             postTitle = postItem.postTitle,
                             threadTitle = postItem.threadTitle,
@@ -53,42 +65,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             hosts = "",
                             downloadDirectory = "VRipper/${postItem.threadId}",
                             addedOn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date()),
-                            folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_"),
+                            folderName = folderName,
                             status = Status.STOPPED,
                             previewUrls = postItem.imageItemList.take(4).map { it.thumbUrl }
                         )
                         
-                        // Check if a folder with this name already exists in DB to append post ID
-                        // This logic should be better handled, but for now we will rely on PostDao returning the ID
-                        // and we can update folderName if needed, but the requirement says "if in the thread multiple posts with images"
-                        // which implies we might want to check existing posts for this thread.
-                        
-                        // Let's first insert to get ID
                         val postId = postDao.insert(post)
                         
-                        // Check if there are other posts for this thread
-                        val count = postDao.countByThreadId(postItem.threadId)
-                        val finalFolderName = if (count > 1) {
-                             "${post.folderName}_${postItem.postId}"
-                        } else {
-                             post.folderName
-                        }
-                        
-                        // Update post with final folder name if changed
-                        if (finalFolderName != post.folderName) {
-                            val updatedPost = post.copy(id = postId, folderName = finalFolderName)
-                            postDao.update(updatedPost)
-                        }
-                        
                         // Check if folder already exists on disk
-                        val folderExists = checkFolderExists(finalFolderName)
-                        val initialStatus = if (folderExists) Status.ALREADY_DOWNLOADED else Status.STOPPED
-                        val initialDownloaded = if (folderExists) post.total else 0
-                        
+                        val folderExists = checkFolderExists(folderName)
+                        // ... rest of logic
                         if (folderExists) {
                              val updatedPost = post.copy(
                                  id = postId, 
-                                 folderName = finalFolderName, 
                                  status = Status.ALREADY_DOWNLOADED,
                                  downloaded = post.total
                              )

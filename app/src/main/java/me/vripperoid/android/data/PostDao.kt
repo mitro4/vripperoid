@@ -29,4 +29,7 @@ interface PostDao {
 
     @Query("SELECT COUNT(*) FROM post WHERE vgThreadId = :threadId")
     suspend fun countByThreadId(threadId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM post WHERE vgPostId = :vgPostId")
+    suspend fun countByVgPostId(vgPostId: Long): Int
 }
