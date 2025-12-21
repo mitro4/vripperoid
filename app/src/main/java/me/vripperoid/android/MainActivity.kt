@@ -44,6 +44,17 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.vector.ImageVector
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -124,43 +135,85 @@ fun MainScreen(viewModel: MainViewModel) {
 
 @Composable
 fun InfoPopup(onDismiss: () -> Unit) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("About") },
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("About")
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:mytridman@proton.me")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Handle no email app
+                    }
+                }) {
+                    Icon(Icons.Filled.Email, contentDescription = "Email")
+                }
+                IconButton(onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com")) // TODO: Update GitHub URL later
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Handle no browser
+                    }
+                }) {
+                    Icon(Icons.Filled.Code, contentDescription = "GitHub") // Using Code icon as placeholder for GitHub
+                }
+            }
+        },
         text = {
             Column {
                 Text("Vripperoid - android app gallery downloader for Vipergirls forum")
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("You can support this project by crypto :")
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = "", // TODO: Add BTC address
-                    onValueChange = {},
-                    label = { Text("BTC") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                
+                CryptoField("BTC", "bc1qt3cqtpq2n9fqx58rgt50wqdfr8u8050ewpv67l", Icons.Filled.CurrencyBitcoin)
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = "", // TODO: Add ETH address
-                    onValueChange = {},
-                    label = { Text("ETH") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                CryptoField("ETH", "0xA9aD656Ec208e3F62F09a5c8D9730D7eCe34D3E8", Icons.Filled.Diamond) // Using Diamond for ETH
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = "", // TODO: Add USDT address
-                    onValueChange = {},
-                    label = { Text("USDT") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                CryptoField("USDT TRC20", "TNiDdpFU2rzsrRJuvz8su5jFRm4u9CWtdj", Icons.Filled.AttachMoney)
             }
         },
         confirmButton = {
             Button(onClick = onDismiss) {
                 Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+fun CryptoField(label: String, address: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    val clipboardManager = LocalClipboardManager.current
+    
+    OutlinedTextField(
+        value = address,
+        onValueChange = {},
+        label = { Text(label) },
+        readOnly = true,
+        modifier = Modifier.fillMaxWidth(),
+        leadingIcon = {
+            Icon(icon, contentDescription = label)
+        },
+        trailingIcon = {
+            IconButton(onClick = {
+                clipboardManager.setText(AnnotatedString(address))
+            }) {
+                Icon(Icons.Filled.ContentCopy, contentDescription = "Copy")
             }
         }
     )
