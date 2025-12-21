@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "me.vripper.android"
+    namespace = "me.vripperoid.android"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "me.vripper.android"
+        applicationId = "me.vripperoid.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "0.1.2"
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -38,7 +38,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
     packaging {
         resources {
@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     
     // Room
     val room_version = "2.6.1"
@@ -82,6 +83,5 @@ dependencies {
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
     // Coil
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

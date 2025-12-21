@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "VRipperAndroid"
+rootProject.name = "Vripperoid"
 include(":app")

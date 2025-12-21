@@ -1,0 +1,34 @@
+package me.vripperoid.android.host
+
+import me.vripperoid.android.domain.Image
+import me.vripperoid.android.exception.HostException
+import me.vripperoid.android.exception.XpathException
+import me.vripperoid.android.util.XpathUtils
+import org.w3c.dom.Node
+
+class TurboImageHost : Host("turboimagehost.com", 14) {
+    private val TAG = "TurboImageHost"
+    private val TITLE_XPATH = "//*[local-name()='div' and contains(@class,'titleFullS')]/*[local-name()='h1']"
+    private val IMG_XPATH = "//*[local-name()='img' and @id='imageid']"
+
+    override fun resolve(image: Image): Pair<String, String> {
+        val document = fetchDocument(image.url)
+        var title: String?
+        title = try {
+            val titleNode = XpathUtils.getAsNode(document, TITLE_XPATH)
+            titleNode?.textContent?.trim()
+        } catch (e: XpathException) {
+            throw HostException(e.message ?: "Xpath error")
+        }
+
+        if (title.isNullOrEmpty()) {
+            title = image.url.substring(image.url.lastIndexOf('/') + 1)
+        }
+
+        val urlNode: Node = XpathUtils.getAsNode(document, IMG_XPATH)
+            ?: throw HostException("Xpath '$IMG_XPATH' cannot be found in '${image.url}'")
+
+        val imgUrl = urlNode.attributes.getNamedItem("src").textContent.trim()
+        return Pair(title, imgUrl)
+    }
+}

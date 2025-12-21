@@ -3,7 +3,7 @@
 
 # Keep Room models
 -keep class androidx.room.** { *; }
--keep class me.vripper.android.store.** { *; }
+-keep class me.vripperoid.android.settings.** { *; }
 
 # OkHttp/Jsoup
 -dontwarn okhttp3.**
