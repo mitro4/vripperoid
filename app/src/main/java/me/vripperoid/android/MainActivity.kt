@@ -38,6 +38,12 @@ import org.koin.android.ext.android.inject
 import org.koin.androidx.compose.get
 
 import android.provider.DocumentsContract
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Popup
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -59,13 +65,17 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(viewModel: MainViewModel) {
     var showDialog by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
     val posts by viewModel.posts.collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("VRipper") },
+                title = { Text("VRipperoid") },
                 actions = {
+                    IconButton(onClick = { showInfo = true }) {
+                        Icon(Icons.Filled.Info, contentDescription = "Info")
+                    }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
@@ -105,7 +115,55 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             )
         }
+
+        if (showInfo) {
+            InfoPopup(onDismiss = { showInfo = false })
+        }
     }
+}
+
+@Composable
+fun InfoPopup(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("About") },
+        text = {
+            Column {
+                Text("Vripperoid - android app gallery downloader for Vipergirls forum")
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("You can support this project by crypto :")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = "", // TODO: Add BTC address
+                    onValueChange = {},
+                    label = { Text("BTC") },
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = "", // TODO: Add ETH address
+                    onValueChange = {},
+                    label = { Text("ETH") },
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = "", // TODO: Add USDT address
+                    onValueChange = {},
+                    label = { Text("USDT") },
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
@@ -238,7 +296,16 @@ fun PostItem(post: Post, onStart: () -> Unit, onDelete: () -> Unit) {
                  )
             }
 
-            Text(text = "Status: ${post.status}", style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Status: ${post.status.stringValue}", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.width(8.dp))
+                if (post.status == Status.FINISHED || post.status == Status.ALREADY_DOWNLOADED) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = "Finished", tint = Color.Green)
+                } else if (post.status == Status.ERROR || post.status == Status.NOT_FULL_FINISHED) {
+                    Icon(Icons.Filled.Error, contentDescription = "Error", tint = Color.Red)
+                }
+            }
+            
             Text(text = "Images: ${post.downloaded}/${post.total}", style = MaterialTheme.typography.bodySmall)
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
