@@ -18,7 +18,9 @@ class ThreadLookupAPIParser(private val threadId: Long, private val baseUrl: Str
     private val TAG = "ThreadLookupAPIParser"
 
     fun parse(): ThreadItem {
-        val url = "$baseUrl/vr.php?t=$threadId"
+        // Try without trailing slash if present, to avoid potential issues
+        val cleanBaseUrl = baseUrl.trimEnd('/')
+        val url = "$cleanBaseUrl/vr.php?t=$threadId"
         LogUtils.d(TAG, "Parsing $url")
         
         val request = Request.Builder()
@@ -32,10 +34,23 @@ class ThreadLookupAPIParser(private val threadId: Long, private val baseUrl: Str
             .header("Sec-Fetch-Mode", "navigate")
             .header("Sec-Fetch-Site", "none")
             .header("Sec-Fetch-User", "?1")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
             .build()
         val response = client.newCall(request).execute()
         
+        // If 403, we might need to fallback to main domain or handle it differently
+        if (response.code == 403) {
+             response.close()
+             // Try fallback to vipergirls.to if the mirror fails
+             if (!baseUrl.contains("vipergirls.to")) {
+                 LogUtils.d(TAG, "Mirror $baseUrl failed with 403, falling back to vipergirls.to")
+                 return ThreadLookupAPIParser(threadId, "https://vipergirls.to").parse()
+             }
+             throw PostParseException("Failed to fetch $url: ${response.code} (Forbidden)")
+        }
+        
         if (!response.isSuccessful) {
+            response.close()
             throw PostParseException("Failed to fetch $url: ${response.code}")
         }
         
