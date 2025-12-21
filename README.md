@@ -51,7 +51,7 @@ To build VRipperoid yourself, you will need **Android Studio Ladybug (or newer)*
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/YOUR_USERNAME/vripper-android.git
+    git clone https://github.com/mitro4/vripperoid.git
     cd vripper-android
     ```
 
@@ -71,4 +71,4 @@ This project is a native Android implementation partially based on the core logi
 
 ## 📥 Download
 
-**[Download latest APK](LINK_TO_YOUR_RELEASE_APK_HERE)**
+**[Download latest APK](https://github.com/mitro4/vripperoid/releases/download/0.1.5/vripperoid-0.1.5.apk)**
