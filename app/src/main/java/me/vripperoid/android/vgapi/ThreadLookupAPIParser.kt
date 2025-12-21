@@ -12,13 +12,13 @@ import org.xml.sax.helpers.DefaultHandler
 import java.io.StringReader
 import javax.xml.parsers.SAXParserFactory
 
-class ThreadLookupAPIParser(private val threadId: Long) : KoinComponent {
+class ThreadLookupAPIParser(private val threadId: Long, private val baseUrl: String = "https://vipergirls.to") : KoinComponent {
 
     private val client: OkHttpClient by inject()
     private val TAG = "ThreadLookupAPIParser"
 
     fun parse(): ThreadItem {
-        val url = "https://viper.click/vr.php?t=$threadId"
+        val url = "$baseUrl/vr.php?t=$threadId"
         LogUtils.d(TAG, "Parsing $url")
         
         val request = Request.Builder().url(url).build()

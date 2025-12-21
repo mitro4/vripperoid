@@ -35,8 +35,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val threadId = extractThreadId(url)
+                val host = extractHost(url) ?: "https://vipergirls.to"
                 if (threadId != null) {
-                    val parser = ThreadLookupAPIParser(threadId)
+                    val parser = ThreadLookupAPIParser(threadId, host)
                     val threadItem = parser.parse()
                     
                     threadItem.postItemList.forEach { postItem ->
@@ -219,6 +220,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
         val matcher = pattern.matcher(url)
         return if (matcher.find()) {
             matcher.group(1)?.toLong()
+        } else {
+            null
+        }
+    }
+
+    private fun extractHost(url: String): String? {
+        val uri = Uri.parse(url)
+        return if (uri.scheme != null && uri.host != null) {
+            "${uri.scheme}://${uri.host}"
         } else {
             null
         }
