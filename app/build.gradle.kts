@@ -29,10 +29,12 @@ android {
             val properties = Properties()
             if (keystoreFile.exists()) {
                 properties.load(keystoreFile.inputStream())
-                storeFile = file(properties.getProperty("store.file"))
-                storePassword = properties.getProperty("store.password")
-                keyAlias = properties.getProperty("key.alias")
-                keyPassword = properties.getProperty("key.password")
+                if (properties.getProperty("store.file") != null) {
+                    storeFile = file(properties.getProperty("store.file"))
+                    storePassword = properties.getProperty("store.password")
+                    keyAlias = properties.getProperty("key.alias")
+                    keyPassword = properties.getProperty("key.password")
+                }
             }
         }
     }
@@ -41,7 +43,10 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
         }
     }
     compileOptions {
