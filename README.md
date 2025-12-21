@@ -1,7 +1,7 @@
 # VRipperoid
 
 <div align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="VRipperoid Logo" width="128" height="128">
+  <img src="icon.svg" alt="VRipperoid Logo" width="128" height="128">
   <br>
   <b>A modern, native Android gallery downloader for ViperGirls forum.</b>
 </div>
