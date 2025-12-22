@@ -54,6 +54,11 @@ import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 
 import android.Manifest
@@ -108,7 +113,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     var showDialog by remember { mutableStateOf(false) }
@@ -116,6 +121,10 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     var showInfo by remember { mutableStateOf(false) }
     val posts by viewModel.posts.collectAsState(initial = emptyList())
     val context = LocalContext.current
+    
+    // Selection state
+    var selectedPostIds by remember { mutableStateOf(setOf<Long>()) }
+    val isSelectionMode = selectedPostIds.isNotEmpty()
     
     // Initial Setup Dialog
     var showSetupDialog by remember { mutableStateOf(settingsStore.downloadPathUri == null) }
@@ -146,20 +155,53 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("VRipperoid") },
-                actions = {
-                    IconButton(onClick = { showInfo = true }) {
-                        Icon(Icons.Filled.Info, contentDescription = "Info")
+            if (isSelectionMode) {
+                 TopAppBar(
+                    title = { Text("${selectedPostIds.size} Selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { selectedPostIds = emptySet() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { 
+                            selectedPostIds = if (selectedPostIds.size == posts.size) {
+                                emptySet()
+                            } else {
+                                posts.map { it.id }.toSet()
+                            }
+                        }) {
+                            Icon(Icons.Filled.SelectAll, contentDescription = "Select All")
+                        }
+                        IconButton(onClick = {
+                            val postsToDelete = posts.filter { it.id in selectedPostIds }
+                            postsToDelete.forEach { viewModel.deletePost(it) }
+                            selectedPostIds = emptySet()
+                        }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete Selected")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("VRipperoid") },
+                    actions = {
+                        IconButton(onClick = { showInfo = true }) {
+                            Icon(Icons.Filled.Info, contentDescription = "Info")
+                        }
+                        IconButton(onClick = { showSettings = true }) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        }
                     }
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
-            if (!showSettings) {
+            if (!showSettings && !isSelectionMode) {
                 FloatingActionButton(onClick = { showDialog = true }) {
                     Text("+")
                 }
@@ -172,11 +214,46 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
             }
             SettingsScreen(onDismiss = { showSettings = false })
         } else {
+            // Handle back press to exit selection mode
+            BackHandler(enabled = isSelectionMode) {
+                selectedPostIds = emptySet()
+            }
+            
             LazyColumn(contentPadding = padding) {
                 items(posts) { post ->
-                    PostItem(post, 
+                    val isSelected = post.id in selectedPostIds
+                    PostItem(
+                        post = post, 
+                        isSelectionMode = isSelectionMode,
+                        isSelected = isSelected,
                         onStart = { viewModel.startDownload(post) },
-                        onDelete = { viewModel.deletePost(post) }
+                        onDelete = { viewModel.deletePost(post) },
+                        onLongClick = {
+                            if (!isSelectionMode) {
+                                selectedPostIds = selectedPostIds + post.id
+                            }
+                        },
+                        onClick = {
+                            if (isSelectionMode) {
+                                selectedPostIds = if (isSelected) {
+                                    selectedPostIds - post.id
+                                } else {
+                                    selectedPostIds + post.id
+                                }
+                            } else {
+                                // Default click behavior (e.g. open gallery if downloaded)
+                                if (post.downloaded > 0) {
+                                     val intent = Intent(Intent.ACTION_VIEW)
+                                     intent.setType("image/*")
+                                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                     try {
+                                         context.startActivity(intent)
+                                     } catch (e: Exception) {
+                                         // Handle error
+                                     }
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -381,10 +458,30 @@ fun SettingsScreen(onDismiss: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PostItem(post: Post, onStart: () -> Unit, onDelete: () -> Unit) {
+fun PostItem(
+    post: Post, 
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onStart: () -> Unit, 
+    onDelete: () -> Unit,
+    onLongClick: () -> Unit,
+    onClick: () -> Unit
+) {
     val context = LocalContext.current
-    Card(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+    
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = post.folderName, style = MaterialTheme.typography.titleMedium)
             
@@ -426,29 +523,28 @@ fun PostItem(post: Post, onStart: () -> Unit, onDelete: () -> Unit) {
             
             Text(text = "Images: ${post.downloaded}/${post.total}", style = MaterialTheme.typography.bodySmall)
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                if (post.downloaded > 0) {
-                    IconButton(onClick = {
-                         val intent = Intent(Intent.ACTION_VIEW)
-                         intent.setType("image/*")
-                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                         try {
-                             context.startActivity(intent)
-                         } catch (e: Exception) {
-                             // Handle error
-                         }
-                    }) {
-                         Icon(Icons.Filled.Visibility, contentDescription = "Open Gallery")
+            // Only show actions if NOT in selection mode to avoid clutter/conflicts
+            if (!isSelectionMode) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (post.downloaded > 0) {
+                        IconButton(onClick = onClick) { // Reuse onClick which handles gallery opening
+                             Icon(Icons.Filled.Visibility, contentDescription = "Open Gallery")
+                        }
+                    }
+                
+                    if (post.status == Status.STOPPED) {
+                        IconButton(onClick = onStart) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "Start")
+                        }
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete")
                     }
                 }
-            
-                if (post.status == Status.STOPPED) {
-                    IconButton(onClick = onStart) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start")
-                    }
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete")
+            } else {
+                // In selection mode, maybe show a checkbox?
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Checkbox(checked = isSelected, onCheckedChange = { onClick() })
                 }
             }
         }
