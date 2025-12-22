@@ -56,28 +56,90 @@ import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.vector.ImageVector
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.os.Build
+
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
+    private val settingsStore: SettingsStore by inject()
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Handle permissions granted/rejected
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startService(Intent(this, DownloadService::class.java))
         
+        checkPermissions()
+        
         setContent {
             MaterialTheme {
-                MainScreen(viewModel)
+                MainScreen(viewModel, settingsStore)
             }
+        }
+    }
+
+    private fun checkPermissions() {
+        val permissions = mutableListOf<String>()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+        
+        if (permissions.isNotEmpty()) {
+            requestPermissionLauncher.launch(permissions.toTypedArray())
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     var showDialog by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }
     val posts by viewModel.posts.collectAsState(initial = emptyList())
+    val context = LocalContext.current
+    
+    // Initial Setup Dialog
+    var showSetupDialog by remember { mutableStateOf(settingsStore.downloadPathUri == null) }
+    
+    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            settingsStore.downloadPathUri = uri.toString()
+            showSetupDialog = false
+        }
+    }
+
+    if (showSetupDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Force user to select */ },
+            title = { Text("Welcome to VRipperoid") },
+            text = { Text("Please select a download folder to store your galleries. This ensures the app has permission to save files.") },
+            confirmButton = {
+                Button(onClick = { launcher.launch(null) }) {
+                    Text("Select Folder")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {

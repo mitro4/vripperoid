@@ -85,9 +85,16 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
 
         // Use name from resolve, but ensure extension is correct or added
         var fileName = name
-        val extension = type.name.substringAfter("_").lowercase()
-        if (!fileName.lowercase().endsWith(".$extension")) {
-            fileName = "$fileName.$extension"
+        val mimeExtension = type.name.substringAfter("_").lowercase()
+        
+        // Handle common extension variations to avoid double extensions (e.g. .jpg.jpeg)
+        val hasValidExtension = when (mimeExtension) {
+            "jpeg" -> fileName.lowercase().endsWith(".jpg") || fileName.lowercase().endsWith(".jpeg")
+            else -> fileName.lowercase().endsWith(".$mimeExtension")
+        }
+        
+        if (!hasValidExtension) {
+            fileName = "$fileName.$mimeExtension"
         }
 
         val outputStream: OutputStream
