@@ -262,8 +262,13 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
         return DownloadedImage(name, file, type)
     }
 
-    fun fetchDocument(url: String): Document {
-        val request = Request.Builder().url(url).build()
+    fun fetchDocument(url: String, cookies: Map<String, String> = emptyMap()): Document {
+        val requestBuilder = Request.Builder().url(url)
+        if (cookies.isNotEmpty()) {
+            val cookieHeader = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+            requestBuilder.header("Cookie", cookieHeader)
+        }
+        val request = requestBuilder.build()
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) throw HostException("Failed to fetch document: ${response.code}")
         return HtmlUtils.clean(response.body!!.byteStream())
