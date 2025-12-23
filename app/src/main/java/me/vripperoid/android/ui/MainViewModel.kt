@@ -43,31 +43,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                     val isBatchMultiple = threadItem.postItemList.size > 1
 
                     // Process in normal order to ensure first post is inserted first
-                    // The UI sorts by addedOn DESC. If we want Post1 (First) at TOP, it must be the LAST inserted (Newest).
-                    // So we must insert Post3, then Post2, then Post1.
-                    // This means iterating the list in REVERSE order.
-                    // Wait, if the user says "Currently... at the top is the last one", it means Post3 is at top.
-                    // That implies Post3 was inserted LAST.
-                    // So my previous change to use asReversed() caused Post1, Post2, Post3 insertion order?
-                    // List: [P1, P2, P3]
-                    // asReversed: [P3, P2, P1]
-                    // Insert P3 (T), P2 (T+1), P1 (T+2).
-                    // Sort DESC: P1 (Top), P2, P3.
-                    // This should have been correct for "First post at top".
-                    // But the user says "Currently... at the top is the last".
-                    // This means they see P3 at the top.
-                    // If P3 is at the top (Newest), it means P3 was inserted LAST.
-                    // So the insertion order was P1 -> P2 -> P3.
-                    // This implies the iteration was NOT reversed (or asReversed() didn't work as expected?).
-                    // Let's assume the user wants P1 at top. P1 must be newest. P1 must be inserted LAST.
-                    // So we MUST iterate P3 -> P2 -> P1.
-                    // If asReversed() didn't achieve that, maybe the parsed list is already reversed?
-                    // Let's try explicit reversal of the list from the parser just to be sure, or flip logic based on user feedback.
-                    // User feedback: "Currently... top is last". Fix: "Top should be first".
-                    // This means we need to reverse whatever we are doing now.
-                    // Currently: asReversed().
-                    // New: Remove asReversed().
-                    threadItem.postItemList.forEach { postItem ->
+                    // The UI sorts by addedOn ASC.
+                    // If we want "Inside one thread return previous display order in UI" (which likely means P1 Top, P2 Bottom),
+                    // we need P1 to be "older" than P2.
+                    // If parser returns [P1, P2]. We insert P1 (T1), P2 (T2).
+                    // `ASC` sort: P1, P2.
+                    // This seems correct.
+                    // However, if the user says "return previous order", maybe the parser returns [P2, P1] (Reverse)?
+                    // If parser is [P2, P1]. Insert P2 (T1), P1 (T2).
+                    // `ASC` sort: P2, P1.
+                    // User sees P2 at Top. If they want P1 at Top, we must reverse.
+                    // Let's assume parser returns posts in reverse order (Last post first) and reverse it back to natural order.
+                    threadItem.postItemList.asReversed().forEach { postItem ->
                         if (postDao.countByVgPostId(postItem.postId) > 0) return@forEach
 
                         val existingCount = postDao.countByThreadId(postItem.threadId)

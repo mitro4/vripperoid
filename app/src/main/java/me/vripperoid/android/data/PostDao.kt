@@ -9,7 +9,7 @@ import me.vripperoid.android.domain.Post
 
 @Dao
 interface PostDao {
-    @Query("SELECT * FROM post ORDER BY addedOn ASC")
+    @Query("SELECT * FROM post ORDER BY addedOn ASC, id ASC")
     fun getAll(): Flow<List<Post>>
 
     @Query("UPDATE post SET downloaded = downloaded + 1 WHERE id = :postId")
