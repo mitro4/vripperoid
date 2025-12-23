@@ -38,12 +38,44 @@ class DownloadService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var isRunning = false
     private val TAG = "DownloadService"
+    
+    // Map PostId -> List of Jobs for immediate cancellation
+    private val activeJobMap = java.util.concurrent.ConcurrentHashMap<Long, MutableList<Job>>()
+    
+    // Broadcast Receiver for immediate stop
+    private val stopReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            if (intent?.action == "me.vripperoid.android.ACTION_STOP_DOWNLOAD") {
+                val postId = intent.getLongExtra("postId", -1L)
+                if (postId != -1L) {
+                    LogUtils.d(TAG, "Received immediate stop for post $postId")
+                    val jobs = activeJobMap[postId]
+                    if (jobs != null) {
+                        synchronized(jobs) {
+                            jobs.forEach { it.cancel() }
+                            jobs.clear()
+                        }
+                        activeJobMap.remove(postId)
+                    }
+                }
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!isRunning) {
             isRunning = true
+            
+            // Register receiver
+            val filter = android.content.IntentFilter("me.vripperoid.android.ACTION_STOP_DOWNLOAD")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(stopReceiver, filter, RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(stopReceiver, filter)
+            }
+            
             startDownloading()
         }
         return START_STICKY
@@ -51,6 +83,7 @@ class DownloadService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(stopReceiver)
         scope.cancel()
     }
 
@@ -201,10 +234,35 @@ class DownloadService : Service() {
                                         image.status = Status.ERROR
                                     }
                                 } catch (e: Exception) {
-                                    LogUtils.e(TAG, "Download failed", e)
-                                    image.status = Status.ERROR
+                                    if (e is CancellationException) {
+                                        LogUtils.d(TAG, "Download cancelled for image ${image.id}")
+                                        image.status = Status.STOPPED
+                                    } else {
+                                        LogUtils.e(TAG, "Download failed", e)
+                                        image.status = Status.ERROR
+                                    }
                                 }
                                 imageDao.update(image)
+                                
+                                // Remove job from map when done
+                                val jobs = activeJobMap[image.postEntityId]
+                                if (jobs != null) {
+                                    synchronized(jobs) {
+                                        // We need reference to self (job). 
+                                        // Ideally we shouldn't iterate to remove, but list is small.
+                                        // Actually we can't access 'job' variable here easily inside the lambda before it's assigned.
+                                        // But we can use current coroutine context job?
+                                        // jobs.remove(coroutineContext[Job])
+                                        // Simplified: just let the map clean up when empty or periodically?
+                                        // Or better: store job in map AFTER launch, and remove here.
+                                        // We need to access 'job' here.
+                                        // We can use `coroutineContext.job`.
+                                        jobs.remove(coroutineContext.job)
+                                    }
+                                    if (jobs.isEmpty()) {
+                                        activeJobMap.remove(image.postEntityId)
+                                    }
+                                }
                                 
                                 // Check for completion after updating status (success or error)
                                 // We check if there are any PENDING or DOWNLOADING images left for this post.
@@ -221,6 +279,12 @@ class DownloadService : Service() {
                                     }
                                 }
                             }
+                            
+                            // Add to map
+                            activeJobMap.computeIfAbsent(image.postEntityId) { 
+                                java.util.Collections.synchronizedList(mutableListOf()) 
+                            }.add(job)
+                            
                             activeDownloads.add(job)
                         } else {
                             delay(1000)

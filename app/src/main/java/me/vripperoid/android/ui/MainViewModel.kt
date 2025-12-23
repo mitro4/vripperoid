@@ -251,6 +251,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
             // But the current Dao method is generic.
             // Let's rely on the fact that changing PENDING to STOPPED effectively stops the queue.
             // The active downloads (max 2-4) will finish naturally.
+            // But user requested IMMEDIATE stop.
+            // Send broadcast to Service to cancel jobs.
+            val context = getApplication<Application>()
+            val intent = android.content.Intent("me.vripperoid.android.ACTION_STOP_DOWNLOAD")
+            intent.putExtra("postId", post.id)
+            intent.setPackage(context.packageName) // Restrict to own package
+            context.sendBroadcast(intent)
         }
     }
 
