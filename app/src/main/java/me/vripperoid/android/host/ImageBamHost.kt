@@ -12,19 +12,44 @@ import java.util.UUID
 class ImageBamHost : Host("imagebam.com", 2) {
     private val TAG = "ImageBamHost"
     private val IMG_XPATH = "//*[local-name()='img' and contains(@class,'main-image')]"
-    // Use a broader xpath to find the link containing 'Continue' text, handling nested elements like spans
-    private val CONTINUE_XPATH = "//a[contains(., 'Continue')]"
+    private val CONTINUE_XPATH = "//*[contains(text(), 'Continue')]"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)
         val doc = try {
             val continueLink = XpathUtils.getAsNode(document, CONTINUE_XPATH)
             if (continueLink != null) {
-                 val href = continueLink.attributes?.getNamedItem("href")?.textContent
-                 if (!href.isNullOrEmpty()) {
-                     fetchDocument(href)
+                 // Check if it is a link
+                 if (continueLink.nodeName.equals("a", ignoreCase = true)) {
+                     val href = continueLink.attributes?.getNamedItem("href")?.textContent
+                     if (!href.isNullOrEmpty()) {
+                         fetchDocument(href)
+                     } else {
+                         document
+                     }
                  } else {
-                     document
+                     // Sometimes the continue button is just a button or span inside an 'a' tag or handled by JS.
+                     // But typically for ImageBam, if there is a 'Continue' text, it's either an anchor or inside one.
+                     // Let's try to find the parent 'a' tag if the current node is not 'a'.
+                     var parent = continueLink.parentNode
+                     var href: String? = null
+                     while (parent != null && parent.nodeName != "#document") {
+                         if (parent.nodeName.equals("a", ignoreCase = true)) {
+                             href = parent.attributes?.getNamedItem("href")?.textContent
+                             break
+                         }
+                         parent = parent.parentNode
+                     }
+                     
+                     if (!href.isNullOrEmpty()) {
+                         fetchDocument(href)
+                     } else {
+                         // If we can't find a link, maybe we just need to re-fetch the same URL with a cookie?
+                         // Original vripper project sets a cookie 'nsfw_inter=1'.
+                         // Since we don't have easy cookie injection here in this method, let's try fetching the same URL again.
+                         // Often the first load sets the cookie and the second load works.
+                         fetchDocument(image.url)
+                     }
                  }
             } else {
                 document

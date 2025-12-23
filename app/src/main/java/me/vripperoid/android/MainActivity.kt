@@ -85,8 +85,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Revert to standard behavior where content fits system windows to avoid overlap
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
+        // Ensure content is laid out edge-to-edge
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         
         startService(Intent(this, DownloadService::class.java))
         
@@ -172,6 +172,7 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             if (isSelectionMode) {
                  TopAppBar(
@@ -226,102 +227,107 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
             }
         },
         floatingActionButton = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.End
-            ) {
+            if (!showSettings && !isSelectionMode) {
+                FloatingActionButton(onClick = { showDialog = true }) {
+                    Text("+")
+                }
+            }
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (showSettings) {
+                BackHandler {
+                    showSettings = false
+                }
+                SettingsScreen(onDismiss = { showSettings = false })
+            } else {
+                // Handle back press to exit selection mode
+                BackHandler(enabled = isSelectionMode) {
+                    selectedPostIds = emptySet()
+                }
+                
+                LazyColumn(state = listState) {
+                    items(posts) { post ->
+                        val isSelected = post.id in selectedPostIds
+                        PostItem(
+                            post = post, 
+                            isSelectionMode = isSelectionMode,
+                            isSelected = isSelected,
+                            onStart = { viewModel.startDownload(post) },
+                            onStop = { viewModel.stopDownload(post) },
+                            onDelete = { viewModel.deletePost(post) },
+                            onLongClick = {
+                                if (!isSelectionMode) {
+                                    selectedPostIds = selectedPostIds + post.id
+                                }
+                            },
+                            onClick = {
+                                if (isSelectionMode) {
+                                    selectedPostIds = if (isSelected) {
+                                        selectedPostIds - post.id
+                                    } else {
+                                        selectedPostIds + post.id
+                                    }
+                                } else {
+                                    // Default click behavior (e.g. open gallery if downloaded)
+                                    if (post.downloaded > 0) {
+                                         val intent = Intent(Intent.ACTION_VIEW)
+                                         intent.setType("image/*")
+                                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                         try {
+                                             context.startActivity(intent)
+                                         } catch (e: Exception) {
+                                             // Handle error
+                                         }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+                
+                // Scroll to top button overlay
                 val showScrollToTop by remember {
                     derivedStateOf {
                         listState.firstVisibleItemIndex > 0
                     }
                 }
-
+                
                 androidx.compose.animation.AnimatedVisibility(
                     visible = showScrollToTop,
                     enter = fadeIn(),
-                    exit = fadeOut()
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 80.dp, end = 16.dp) // Place above the FAB
                 ) {
-                    FloatingActionButton(onClick = {
-                        scope.launch {
-                            listState.animateScrollToItem(0)
-                        }
-                    }) {
+                    SmallFloatingActionButton(
+                        onClick = { 
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
                         Icon(Icons.Filled.ArrowUpward, contentDescription = "Scroll to Top")
                     }
                 }
-
-                if (!showSettings && !isSelectionMode) {
-                    FloatingActionButton(onClick = { showDialog = true }) {
-                        Text("+")
-                    }
-                }
-            }
-        }
-    ) { padding ->
-        if (showSettings) {
-            BackHandler {
-                showSettings = false
-            }
-            SettingsScreen(onDismiss = { showSettings = false })
-        } else {
-            // Handle back press to exit selection mode
-            BackHandler(enabled = isSelectionMode) {
-                selectedPostIds = emptySet()
             }
             
-            LazyColumn(contentPadding = padding) {
-                items(posts) { post ->
-                    val isSelected = post.id in selectedPostIds
-                    PostItem(
-                        post = post, 
-                        isSelectionMode = isSelectionMode,
-                        isSelected = isSelected,
-                        onStart = { viewModel.startDownload(post) },
-                        onStop = { viewModel.stopDownload(post) },
-                        onDelete = { viewModel.deletePost(post) },
-                        onLongClick = {
-                            if (!isSelectionMode) {
-                                selectedPostIds = selectedPostIds + post.id
-                            }
-                        },
-                        onClick = {
-                            if (isSelectionMode) {
-                                selectedPostIds = if (isSelected) {
-                                    selectedPostIds - post.id
-                                } else {
-                                    selectedPostIds + post.id
-                                }
-                            } else {
-                                // Default click behavior (e.g. open gallery if downloaded)
-                                if (post.downloaded > 0) {
-                                     val intent = Intent(Intent.ACTION_VIEW)
-                                     intent.setType("image/*")
-                                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                     try {
-                                         context.startActivity(intent)
-                                     } catch (e: Exception) {
-                                         // Handle error
-                                     }
-                                }
-                            }
-                        }
-                    )
-                }
+            if (showDialog) {
+                AddUrlDialog(
+                    onDismiss = { showDialog = false },
+                    onAdd = { url ->
+                        viewModel.addPost(url)
+                        showDialog = false
+                    }
+                )
             }
-        }
-        
-        if (showDialog) {
-            AddUrlDialog(
-                onDismiss = { showDialog = false },
-                onAdd = { url ->
-                    viewModel.addPost(url)
-                    showDialog = false
-                }
-            )
-        }
 
-        if (showInfo) {
-            InfoPopup(onDismiss = { showInfo = false })
+            if (showInfo) {
+                InfoPopup(onDismiss = { showInfo = false })
+            }
         }
     }
 }
