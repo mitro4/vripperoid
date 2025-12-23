@@ -94,7 +94,9 @@ class DownloadService : Service() {
                          //    Or just any active post? Usually FIFO is better.
                          //    Our SQL `getNextPendingForActivePosts` sorts by image ID ASC.
                          var image = if (activePostIds.isNotEmpty()) {
-                             imageDao.getNextPendingForActivePosts(activePostIds)
+                             // We want to prioritize based on Post ID order to keep consistency
+                             val sortedActivePostIds = activePostIds.sorted()
+                             imageDao.getNextPendingForActivePosts(sortedActivePostIds)
                          } else {
                              null
                          }
