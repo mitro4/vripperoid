@@ -174,6 +174,13 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
                             Icon(Icons.Filled.SelectAll, contentDescription = "Select All")
                         }
                         IconButton(onClick = {
+                            val postsToStart = posts.filter { it.id in selectedPostIds }
+                            postsToStart.forEach { viewModel.startDownload(it) }
+                            selectedPostIds = emptySet()
+                        }) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "Start Selected")
+                        }
+                        IconButton(onClick = {
                             val postsToDelete = posts.filter { it.id in selectedPostIds }
                             postsToDelete.forEach { viewModel.deletePost(it) }
                             selectedPostIds = emptySet()
