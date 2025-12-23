@@ -136,6 +136,8 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     var showInfo by remember { mutableStateOf(false) }
     val posts by viewModel.posts.collectAsState(initial = emptyList())
     val context = LocalContext.current
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     // Selection state
     var selectedPostIds by remember { mutableStateOf(setOf<Long>()) }
@@ -224,9 +226,34 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
             }
         },
         floatingActionButton = {
-            if (!showSettings && !isSelectionMode) {
-                FloatingActionButton(onClick = { showDialog = true }) {
-                    Text("+")
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                val showScrollToTop by remember {
+                    derivedStateOf {
+                        listState.firstVisibleItemIndex > 0
+                    }
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showScrollToTop,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    FloatingActionButton(onClick = {
+                        scope.launch {
+                            listState.animateScrollToItem(0)
+                        }
+                    }) {
+                        Icon(Icons.Filled.ArrowUpward, contentDescription = "Scroll to Top")
+                    }
+                }
+
+                if (!showSettings && !isSelectionMode) {
+                    FloatingActionButton(onClick = { showDialog = true }) {
+                        Text("+")
+                    }
                 }
             }
         }
