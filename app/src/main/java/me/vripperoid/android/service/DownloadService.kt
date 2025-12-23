@@ -194,6 +194,10 @@ class DownloadService : Service() {
                             }
                             
                             val job = launch {
+                                val currentJobs = activeJobMap.computeIfAbsent(image.postEntityId) { mutableListOf() }
+                                synchronized(currentJobs) {
+                                    currentJobs.add(coroutineContext.job)
+                                }
                                 try {
                                     val host = when (image.host) {
                                         1.toByte() -> dPicMeHost
@@ -245,9 +249,9 @@ class DownloadService : Service() {
                                 imageDao.update(image)
                                 
                                 // Remove job from map when done
-                                val jobs = activeJobMap[image.postEntityId]
-                                if (jobs != null) {
-                                    synchronized(jobs) {
+                                val cleanupJobs = activeJobMap[image.postEntityId]
+                                if (cleanupJobs != null) {
+                                    synchronized(cleanupJobs) {
                                         // We need reference to self (job). 
                                         // Ideally we shouldn't iterate to remove, but list is small.
                                         // Actually we can't access 'job' variable here easily inside the lambda before it's assigned.
@@ -257,9 +261,9 @@ class DownloadService : Service() {
                                         // Or better: store job in map AFTER launch, and remove here.
                                         // We need to access 'job' here.
                                         // We can use `coroutineContext.job`.
-                                        jobs.remove(coroutineContext.job)
+                                        cleanupJobs.remove(coroutineContext.job)
                                     }
-                                    if (jobs.isEmpty()) {
+                                    if (cleanupJobs.isEmpty()) {
                                         activeJobMap.remove(image.postEntityId)
                                     }
                                 }
@@ -279,12 +283,6 @@ class DownloadService : Service() {
                                     }
                                 }
                             }
-                            
-                            // Add to map
-                            activeJobMap.computeIfAbsent(image.postEntityId) { 
-                                java.util.Collections.synchronizedList(mutableListOf()) 
-                            }.add(job)
-                            
                             activeDownloads.add(job)
                         } else {
                             delay(1000)
