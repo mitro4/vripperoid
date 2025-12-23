@@ -22,17 +22,23 @@
 *   **Thread Parsing**: Simply paste a ViperGirls thread URL (or mirror link), and VRipperoid will extract all images.
 *   **Mirror Support**: Supports parsing links from official mirrors like `planetviper.club`, `viper.to`, etc.
 *   **Batch Downloading**: Automatically queues and downloads all images from a thread.
+*   **Advanced Scheduling**:
+    *   **FIFO Queue**: Downloads are processed strictly in the order they appear in your list (Top-to-Bottom).
+    *   **Parallel Downloading**: Fine-tune performance with separate controls for **Max Concurrent Posts** and **Max Concurrent Images** (per post).
 *   **Smart Handling**:
-    *   **Multiple Posts**: If a thread has multiple posts with images, they are split into separate download queues with unique folder names.
+    *   **Multiple Posts**: Threads with multiple posts are split into separate queues.
+    *   **Folder Management**: Files are saved directly to your chosen folder. Unique naming (`Title_PostID`) prevents conflicts.
     *   **Duplicate Detection**: Prevents adding the same post twice.
-    *   **Retry Logic**: Automatically retries downloads on `503 Service Unavailable` errors (configurable retry count).
+    *   **Retry Logic**: Automatically retries downloads on `503 Service Unavailable` errors.
+    *   **Manual Retry**: "Refresh" button available for posts with incomplete or failed downloads.
 *   **Download Management**:
-    *   Pause/Resume support (via restart).
+    *   Pause/Resume support.
+    *   **Multi-Selection**: Select multiple posts to Start or Delete them in batch.
     *   **Status Indicators**: Clear visual cues for finished (✅) and failed (❌) downloads.
     *   **Delete from Storage**: Option to delete downloaded files from disk when removing a post from the app.
 *   **Customization**:
     *   Choose custom download directory (SD Card support via Storage Access Framework).
-    *   Set maximum concurrent downloads.
+    *   Configure global concurrency limits.
 *   **Privacy**: Mimics browser behavior (User-Agent, Headers) to bypass basic bot protections.
 
 ## 🛠 Supported Image Hosts
@@ -71,4 +77,4 @@ This project is a native Android implementation partially based on the core logi
 
 ## 📥 Download
 
-**[Download latest APK](https://github.com/mitro4/vripperoid/releases/download/0.1.5/vripperoid-0.1.5.apk)**
+**[Download latest APK](https://github.com/mitro4/vripperoid/releases/tag/v0.1.8)**
