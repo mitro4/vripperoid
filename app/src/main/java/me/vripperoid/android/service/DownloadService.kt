@@ -90,10 +90,24 @@ class DownloadService : Service() {
                          
                          // Let's modify logic:
                          // 1. Try to get a pending image from an already active post
-                         var image = imageDao.getNextPendingForActivePosts(activePostIds)
+                         // 2. We want to prioritize active posts based on their Post ID (FIFO) to finish first started first?
+                         //    Or just any active post? Usually FIFO is better.
+                         //    Our SQL `getNextPendingForActivePosts` sorts by image ID ASC.
+                         var image = if (activePostIds.isNotEmpty()) {
+                             imageDao.getNextPendingForActivePosts(activePostIds)
+                         } else {
+                             null
+                         }
                          
                          // 2. If no image from active posts, check if we can start a new post
+                         //    Only if activePostIds.size < maxConcurrentPosts
                          if (image == null && activePostIds.size < maxConcurrentPosts) {
+                             // We want to pick images from the "next" post in queue.
+                             // The queue is defined by Post creation time (ID).
+                             // We want to pick the pending image with the LOWEST Post ID.
+                             // Currently `getNextPending` sorts by Image ID ASC.
+                             // Since Image IDs are sequential and tied to Post insertion, Image ID ASC implicitly sorts by Post ID ASC.
+                             // So `getNextPending` already returns the image from the oldest pending post.
                              image = imageDao.getNextPending()
                          }
                          
