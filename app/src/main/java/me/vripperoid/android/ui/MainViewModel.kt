@@ -122,7 +122,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                 // No more VRipper/ prefix logic for traversal if we assume flat structure in root
                 // But we should still support checking if it's a folder in the root
                 val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
-                var targetUri: Uri? = null
+                var foundUri: Uri? = null
                 
                 context.contentResolver.query(
                     childrenUri,
@@ -136,15 +136,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             val name = cursor.getString(nameIndex)
                             if (name == fullPath) {
                                 val foundId = cursor.getString(idIndex)
-                                targetUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, foundId)
+                                foundUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, foundId)
                                 break
                             }
                         }
                     }
                 }
                 
-                if (targetUri != null) {
-                     DocumentsContract.deleteDocument(context.contentResolver, targetUri)
+                if (foundUri != null) {
+                     DocumentsContract.deleteDocument(context.contentResolver, foundUri!!)
                 }
                 
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
