@@ -180,7 +180,7 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
                             Icon(Icons.Filled.SelectAll, contentDescription = "Select All")
                         }
                         IconButton(onClick = {
-                            val postsToStart = posts.filter { it.id in selectedPostIds }
+                            val postsToStart = posts.filter { it.id in selectedPostIds }.sortedBy { it.id } // Start from first added
                             postsToStart.forEach { viewModel.startDownload(it) }
                             selectedPostIds = emptySet()
                         }) {
@@ -402,13 +402,28 @@ fun SettingsScreen(onDismiss: () -> Unit) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text("Global concurrent downloads", style = MaterialTheme.typography.bodyLarge)
-        Text("Max Concurrent Downloads: ${maxConcurrent.toInt()}")
+        Text("Global concurrent downloads (Images)", style = MaterialTheme.typography.bodyLarge)
+        Text("Max Concurrent Images: ${maxConcurrent.toInt()}")
         Slider(
             value = maxConcurrent,
             onValueChange = { 
                 maxConcurrent = it
                 settingsStore.maxGlobalConcurrent = it.toInt()
+            },
+            valueRange = 1f..20f,
+            steps = 19
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        var maxConcurrentPosts by remember { mutableStateOf(settingsStore.maxConcurrentPosts.toFloat()) }
+        Text("Global concurrent downloads (Posts)", style = MaterialTheme.typography.bodyLarge)
+        Text("Max Concurrent Posts: ${maxConcurrentPosts.toInt()}")
+        Slider(
+            value = maxConcurrentPosts,
+            onValueChange = { 
+                maxConcurrentPosts = it
+                settingsStore.maxConcurrentPosts = it.toInt()
             },
             valueRange = 1f..20f,
             steps = 19

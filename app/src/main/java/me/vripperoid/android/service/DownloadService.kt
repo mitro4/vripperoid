@@ -66,16 +66,50 @@ class DownloadService : Service() {
                     // Clean up finished jobs
                     activeDownloads.removeAll { !it.isActive }
                     
-                    val maxConcurrent = settingsStore.maxGlobalConcurrent
+                    val maxConcurrentImages = settingsStore.maxGlobalConcurrent
+                    val maxConcurrentPosts = settingsStore.maxConcurrentPosts
                     
-                    if (activeDownloads.size < maxConcurrent) {
-                        val image = imageDao.getNextPending()
+                    // Check active posts count
+                    // We need a way to count how many distinct posts are currently being downloaded
+                    val activePostIds = imageDao.getActiveDownloadPostIds() // We need this query
+                    
+                    // Logic:
+                    // 1. If activeDownloads (images) < maxConcurrentImages
+                    // 2. AND (If the next image belongs to a post that is already active OR active posts count < maxConcurrentPosts)
+                    
+                    if (activeDownloads.size < maxConcurrentImages) {
+                         // We need a smarter query than getNextPending()
+                         // getNextPending() just returns any PENDING image.
+                         // We should modify it or filter here.
+                         
+                         // Option A: Get a list of candidate images and filter in code (simple but less efficient)
+                         // Option B: Complex SQL (better)
+                         
+                         // Let's try to get the next image, and check if we can start it.
+                         // Ideally, we want to prioritize images from ALREADY ACTIVE posts to finish them first.
+                         
+                         // Let's modify logic:
+                         // 1. Try to get a pending image from an already active post
+                         var image = imageDao.getNextPendingForActivePosts(activePostIds)
+                         
+                         // 2. If no image from active posts, check if we can start a new post
+                         if (image == null && activePostIds.size < maxConcurrentPosts) {
+                             image = imageDao.getNextPending()
+                         }
+                         
                         if (image != null) {
                             LogUtils.d(TAG, "Processing image ${image.id}")
                             
                             // Mark as downloading immediately to prevent picking it up again
                             image.status = Status.DOWNLOADING
                             imageDao.update(image)
+                            
+                            // Also update Post status to DOWNLOADING if it was PENDING/STOPPED
+                            val post = postDao.getById(image.postEntityId)
+                            if (post != null && post.status != Status.DOWNLOADING) {
+                                post.status = Status.DOWNLOADING
+                                postDao.update(post)
+                            }
                             
                             val job = launch {
                                 try {
@@ -113,9 +147,6 @@ class DownloadService : Service() {
                                         
                                         image.status = Status.FINISHED
                                         postDao.incrementDownloaded(image.postEntityId)
-                                        
-                                        // Check if all images are finished for this post
-                                        // Moved to after try-catch block to handle errors too
                                     } else {
                                         LogUtils.e(TAG, "No host found for ${image.url}")
                                         image.status = Status.ERROR
@@ -123,22 +154,16 @@ class DownloadService : Service() {
                                 } catch (e: Exception) {
                                     LogUtils.e(TAG, "Download failed", e)
                                     image.status = Status.ERROR
-                                    
-                                    // Check if all images are finished (even if failed)
-                                    val remaining = imageDao.countPendingByPostId(image.postEntityId)
-                                    // remaining is based on PENDING, so this error image is already not pending.
-                                    // We need to check if there are ANY pending left.
-                                    // Note: We updated image.status = ERROR below, but here it is just a variable.
-                                    // But wait, we update imageDao.update(image) at the end of the block.
-                                    // So the DB still sees it as DOWNLOADING (which is not PENDING).
-                                    // So countPendingByPostId should be accurate regarding other images.
-                                    // However, we should probably do this check AFTER updating the image status in DB.
                                 }
                                 imageDao.update(image)
                                 
                                 // Check for completion after updating status (success or error)
-                                val remaining = imageDao.countPendingByPostId(image.postEntityId)
-                                if (remaining == 0) {
+                                // We check if there are any PENDING or DOWNLOADING images left for this post.
+                                // If none, then the post is finished (either fully or partially with errors).
+                                val remainingPending = imageDao.countPendingByPostId(image.postEntityId)
+                                val remainingDownloading = imageDao.countDownloadingByPostId(image.postEntityId) // We need this query
+                                
+                                if (remainingPending == 0 && remainingDownloading == 0) {
                                     val post = postDao.getById(image.postEntityId)
                                     if (post != null) {
                                         val errorCount = imageDao.countErrorByPostId(image.postEntityId)

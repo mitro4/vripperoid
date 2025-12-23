@@ -10,6 +10,10 @@ class SettingsStore(context: Context) {
     get() = prefs.getInt(KEY_MAX_GLOBAL, 4)
     set(value) { prefs.edit().putInt(KEY_MAX_GLOBAL, value).apply() }
 
+  var maxConcurrentPosts: Int
+    get() = prefs.getInt(KEY_MAX_CONCURRENT_POSTS, 2)
+    set(value) { prefs.edit().putInt(KEY_MAX_CONCURRENT_POSTS, value).apply() }
+
   var maxConcurrentPerHost: Int
     get() = prefs.getInt(KEY_MAX_PER_HOST, 2)
     set(value) { prefs.edit().putInt(KEY_MAX_PER_HOST, value).apply() }
@@ -28,6 +32,7 @@ class SettingsStore(context: Context) {
 
   companion object {
     private const val KEY_MAX_GLOBAL = "max_global"
+    private const val KEY_MAX_CONCURRENT_POSTS = "max_concurrent_posts"
     private const val KEY_MAX_PER_HOST = "max_per_host"
     private const val KEY_DOWNLOAD_PATH_URI = "download_path_uri"
     private const val KEY_DELETE_FROM_STORAGE = "delete_from_storage"
