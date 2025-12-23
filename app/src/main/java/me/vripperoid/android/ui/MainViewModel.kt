@@ -42,12 +42,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                     
                     val isBatchMultiple = threadItem.postItemList.size > 1
 
-                    threadItem.postItemList.forEach { postItem ->
+                    // Process in reverse order so the first post in thread is inserted last (getting latest timestamp)
+                    // and appears at the top of the list (sorted by DESC)
+                    threadItem.postItemList.asReversed().forEach { postItem ->
                         if (postDao.countByVgPostId(postItem.postId) > 0) return@forEach
 
                         val existingCount = postDao.countByThreadId(postItem.threadId)
+                        // If multiple posts in this batch OR we already have posts from this thread, use suffix
                         val forceSuffix = isBatchMultiple || existingCount > 0
 
+                        var folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_")
+                        if (forceSuffix) {
+                            folderName += "_${postItem.postId}"
+                        }
+                        
                         val post = Post(
                             postTitle = postItem.postTitle,
                             threadTitle = postItem.threadTitle,
@@ -58,9 +66,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             vgThreadId = postItem.threadId,
                             total = postItem.imageCount,
                             hosts = "",
-                            downloadDirectory = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_"),
+                            downloadDirectory = folderName,
                             addedOn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date()),
-                            folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_"),
+                            folderName = folderName,
                             status = Status.STOPPED,
                             previewUrls = postItem.imageItemList.take(4).map { it.thumbUrl }
                         )
