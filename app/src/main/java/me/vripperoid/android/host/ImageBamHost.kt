@@ -18,21 +18,27 @@ class ImageBamHost : Host("imagebam.com", 2) {
         val document = fetchDocument(image.url)
         val doc = try {
             if (XpathUtils.getAsNode(document, CONTINUE_XPATH) != null) {
-                // In a real app we might need to handle cookies properly if the continue button sets a cookie.
-                // The original code sets a cookie manually.
-                // For simplicity here, we assume fetchDocument handles basic cases, 
-                // but strictly we might need to add the cookie to the OkHttp client or request.
-                // Since OkHttp CookieJar is not set up in the base class in a way to easily add one-off cookies for a request,
-                // we might need to rely on the server accepting the request or implementing cookie handling.
-                // However, the original code sets "nsfw_inter" cookie.
-                // Let's try to just fetch again, or we might need to improve Host architecture to support cookies per request.
-                // For now, we will just try to fetch the page again or return the document if it works.
-                fetchDocument(image.url) 
+                 // Try to fetch again, expecting the cookie to be set or the interstitial to be bypassed.
+                 // In many cases, simply requesting the page again or following the link works.
+                 // If the 'Continue' button is a link, we should follow it.
+                 val continueNode = XpathUtils.getAsNode(document, CONTINUE_XPATH)
+                 // Check if it's an 'a' tag
+                 if (continueNode?.nodeName.equals("a", ignoreCase = true)) {
+                     val href = continueNode?.attributes?.getNamedItem("href")?.textContent
+                     if (!href.isNullOrEmpty()) {
+                         fetchDocument(href)
+                     } else {
+                         fetchDocument(image.url)
+                     }
+                 } else {
+                     fetchDocument(image.url)
+                 }
             } else {
                 document
             }
         } catch (e: XpathException) {
-            throw HostException(e.message ?: "Xpath error")
+            // If xpath fails, just ignore and try with original document
+            document
         }
 
         val imgNode: Node = try {
