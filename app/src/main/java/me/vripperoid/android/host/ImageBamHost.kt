@@ -12,26 +12,19 @@ import java.util.UUID
 class ImageBamHost : Host("imagebam.com", 2) {
     private val TAG = "ImageBamHost"
     private val IMG_XPATH = "//*[local-name()='img' and contains(@class,'main-image')]"
-    private val CONTINUE_XPATH = "//*[contains(text(), 'Continue')]"
+    // Use a broader xpath to find the link containing 'Continue' text, handling nested elements like spans
+    private val CONTINUE_XPATH = "//a[contains(., 'Continue')]"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)
         val doc = try {
-            if (XpathUtils.getAsNode(document, CONTINUE_XPATH) != null) {
-                 // Try to fetch again, expecting the cookie to be set or the interstitial to be bypassed.
-                 // In many cases, simply requesting the page again or following the link works.
-                 // If the 'Continue' button is a link, we should follow it.
-                 val continueNode = XpathUtils.getAsNode(document, CONTINUE_XPATH)
-                 // Check if it's an 'a' tag
-                 if (continueNode?.nodeName.equals("a", ignoreCase = true)) {
-                     val href = continueNode?.attributes?.getNamedItem("href")?.textContent
-                     if (!href.isNullOrEmpty()) {
-                         fetchDocument(href)
-                     } else {
-                         fetchDocument(image.url)
-                     }
+            val continueLink = XpathUtils.getAsNode(document, CONTINUE_XPATH)
+            if (continueLink != null) {
+                 val href = continueLink.attributes?.getNamedItem("href")?.textContent
+                 if (!href.isNullOrEmpty()) {
+                     fetchDocument(href)
                  } else {
-                     fetchDocument(image.url)
+                     document
                  }
             } else {
                 document
