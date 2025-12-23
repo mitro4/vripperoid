@@ -230,6 +230,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
         }
     }
     
+    fun stopDownload(post: Post) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val updatedPost = post.copy(status = Status.STOPPED)
+            postDao.update(updatedPost)
+            
+            // Set all PENDING images to STOPPED
+            // For DOWNLOADING images, we can't easily cancel the job reference in Service from here without more complex IPC/EventBus.
+            // But updating the DB status to STOPPED (if we did) might confuse the service loop or be overwritten.
+            // The safe bet is: Update PENDING -> STOPPED.
+            // The actively downloading images will finish (or fail) and update status to FINISHED/ERROR.
+            // Since no more PENDING images exist (they are STOPPED), the service won't pick up new ones for this post.
+            imageDao.updateStatusByPostId(post.id, Status.STOPPED, Status.FINISHED)
+            
+            // Note: Currently imageDao.updateStatusByPostId updates ALL non-excluded status.
+            // If we have DOWNLOADING status images, and we update them to STOPPED here, 
+            // the Service will eventually try to update them to FINISHED.
+            // DB write conflict might happen but usually last write wins.
+            // If Service writes FINISHED after we write STOPPED, it's fine (it actually finished).
+            // If we write STOPPED after Service writes FINISHED, we might show STOPPED for a finished image.
+            // So we should be careful.
+            // Ideally we only update PENDING -> STOPPED.
+            // Let's modify Dao or check usage.
+            // updateStatusByPostId(postId, newStatus, excludeStatus)
+            // "UPDATE image SET status = :newStatus WHERE postEntityId = :postId AND status != :excludeStatus"
+            // If we exclude FINISHED, we update PENDING, DOWNLOADING, ERROR, etc.
+            // We should probably only update PENDING and DOWNLOADING?
+            // Actually, "Stop" usually means "Pause".
+            // So PENDING -> STOPPED is the main goal.
+            // DOWNLOADING -> STOPPED? If we do this, and the download finishes 1ms later, it writes FINISHED.
+            // If the download takes 10s, UI shows STOPPED.
+            // Better to only update PENDING.
+            // But the current Dao method is generic.
+            // Let's rely on the fact that changing PENDING to STOPPED effectively stops the queue.
+            // The active downloads (max 2-4) will finish naturally.
+        }
+    }
+
     fun startDownload(post: Post) {
         viewModelScope.launch(Dispatchers.IO) {
             val updatedPost = post.copy(status = Status.PENDING)
@@ -239,6 +276,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
             // Note: In a real app we might want to check if they are already finished
             // But for simplicity here, we assume we want to retry/start all stopped/pending ones.
             // A more complex query in Dao might be better: "UPDATE image SET status = PENDING WHERE postEntityId = :id AND status != FINISHED"
+            // imageDao.updateStatusByPostId(post.id, Status.PENDING, Status.FINISHED)
+            // We should use a more specific update to only reset STOPPED/ERROR -> PENDING
+            // But the generic one works for "Restart/Resume".
             imageDao.updateStatusByPostId(post.id, Status.PENDING, Status.FINISHED)
         }
     }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -241,6 +242,7 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
                         isSelectionMode = isSelectionMode,
                         isSelected = isSelected,
                         onStart = { viewModel.startDownload(post) },
+                        onStop = { viewModel.stopDownload(post) },
                         onDelete = { viewModel.deletePost(post) },
                         onLongClick = {
                             if (!isSelectionMode) {
@@ -493,7 +495,8 @@ fun PostItem(
     post: Post, 
     isSelectionMode: Boolean,
     isSelected: Boolean,
-    onStart: () -> Unit, 
+    onStart: () -> Unit,
+    onStop: () -> Unit,
     onDelete: () -> Unit,
     onLongClick: () -> Unit,
     onClick: () -> Unit
@@ -564,6 +567,10 @@ fun PostItem(
                     if (post.status == Status.STOPPED) {
                         IconButton(onClick = onStart) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = "Start")
+                        }
+                    } else if (post.status == Status.DOWNLOADING || post.status == Status.PENDING) {
+                        IconButton(onClick = onStop) {
+                            Icon(Icons.Filled.Pause, contentDescription = "Stop")
                         }
                     }
                     
