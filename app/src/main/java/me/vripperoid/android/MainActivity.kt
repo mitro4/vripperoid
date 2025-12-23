@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Ensure content is laid out edge-to-edge
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         
         startService(Intent(this, DownloadService::class.java))
         
@@ -169,6 +169,7 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     }
 
     Scaffold(
+        modifier = Modifier.statusBarsPadding(),
         topBar = {
             if (isSelectionMode) {
                  TopAppBar(
@@ -542,7 +543,7 @@ fun PostItem(
                 }
             }
 
-            if (post.status == Status.DOWNLOADING || post.status == Status.PENDING || post.status == Status.FINISHED || post.status == Status.ALREADY_DOWNLOADED) {
+            if (post.status == Status.DOWNLOADING || post.status == Status.PENDING || post.status == Status.FINISHED || post.status == Status.ALREADY_DOWNLOADED || post.status == Status.STOPPED) {
                  val progress = if (post.total > 0) post.downloaded.toFloat() / post.total.toFloat() else 0f
                  LinearProgressIndicator(
                      progress = progress,
