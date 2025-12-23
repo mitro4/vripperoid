@@ -103,7 +103,7 @@ class DownloadService : Service() {
                     var imageToDownload: me.vripperoid.android.domain.Image? = null
                     
                     // A. Check active posts first (Priority FIFO)
-                    val sortedActivePostIds = activePostIds.sorted()
+                    val sortedActivePostIds = activePostIds.sortedDescending()
                     for (postId in sortedActivePostIds) {
                         val currentDownloadsForPost = imageDao.countDownloadingImagesForPost(postId)
                         if (currentDownloadsForPost < maxConcurrentImagesPerPost) {

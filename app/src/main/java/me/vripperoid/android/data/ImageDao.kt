@@ -16,13 +16,13 @@ interface ImageDao {
     @Query("SELECT * FROM image WHERE postEntityId = :postId")
     suspend fun getByPostIdSync(postId: Long): List<Image>
 
-    @Query("SELECT * FROM image WHERE status = :status ORDER BY postEntityId ASC, id ASC LIMIT 1")
+    @Query("SELECT * FROM image WHERE status = :status ORDER BY postEntityId DESC, id ASC LIMIT 1")
     suspend fun getNextPending(status: Status = Status.PENDING): Image?
 
-    @Query("SELECT * FROM image WHERE status = :status AND postEntityId NOT IN (:excludePostIds) ORDER BY postEntityId ASC, id ASC LIMIT 1")
+    @Query("SELECT * FROM image WHERE status = :status AND postEntityId NOT IN (:excludePostIds) ORDER BY postEntityId DESC, id ASC LIMIT 1")
     suspend fun getNextPendingExcludePosts(excludePostIds: List<Long>, status: Status = Status.PENDING): Image?
 
-    @Query("SELECT * FROM image WHERE status = :status AND postEntityId IN (:postIds) ORDER BY postEntityId ASC, id ASC LIMIT 1")
+    @Query("SELECT * FROM image WHERE status = :status AND postEntityId IN (:postIds) ORDER BY postEntityId DESC, id ASC LIMIT 1")
     suspend fun getNextPendingForActivePosts(postIds: List<Long>, status: Status = Status.PENDING): Image?
 
     @Query("SELECT DISTINCT postEntityId FROM image WHERE status = 'DOWNLOADING'")
