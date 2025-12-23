@@ -225,9 +225,6 @@ class DownloadService : Service() {
                         } else {
                             delay(1000)
                         }
-                    } else {
-                        delay(100) // Wait a bit if max concurrent reached
-                    }
                 } catch (e: Exception) {
                     LogUtils.e(TAG, "Error in download loop", e)
                     delay(1000)
