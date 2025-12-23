@@ -402,7 +402,7 @@ fun SettingsScreen(onDismiss: () -> Unit) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text("Global concurrent downloads (Images)", style = MaterialTheme.typography.bodyLarge)
+        Text("Concurrent images per post", style = MaterialTheme.typography.bodyLarge)
         Text("Max Concurrent Images: ${maxConcurrent.toInt()}")
         Slider(
             value = maxConcurrent,
