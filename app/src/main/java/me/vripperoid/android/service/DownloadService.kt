@@ -70,11 +70,7 @@ class DownloadService : Service() {
             
             // Register receiver
             val filter = android.content.IntentFilter("me.vripperoid.android.ACTION_STOP_DOWNLOAD")
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(stopReceiver, filter, RECEIVER_NOT_EXPORTED)
-            } else {
-                registerReceiver(stopReceiver, filter)
-            }
+            androidx.core.content.ContextCompat.registerReceiver(this, stopReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
             
             startDownloading()
         }
