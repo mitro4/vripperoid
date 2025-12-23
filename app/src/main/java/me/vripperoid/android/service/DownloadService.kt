@@ -236,10 +236,3 @@ class DownloadService : Service() {
         }
     }
 }
-                    LogUtils.e(TAG, "Error in download loop", e)
-                    delay(1000)
-                }
-            }
-        }
-    }
-}
