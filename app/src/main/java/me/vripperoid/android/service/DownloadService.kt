@@ -102,9 +102,9 @@ class DownloadService : Service() {
                                         // Use app-specific storage to avoid permission issues
                                         val post = postDao.getById(image.postEntityId)
                                         val folderName = if (post != null) {
-                                            "VRipper/${post.folderName}"
+                                            post.folderName
                                         } else {
-                                            "VRipper/${image.postEntityId}"
+                                            image.postEntityId.toString()
                                         }
                                         
                                         host.download(image, applicationContext, folderName) { _, _ ->

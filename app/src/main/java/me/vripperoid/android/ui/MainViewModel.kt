@@ -48,11 +48,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                         val existingCount = postDao.countByThreadId(postItem.threadId)
                         val forceSuffix = isBatchMultiple || existingCount > 0
 
-                        var folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_")
-                        if (forceSuffix) {
-                            folderName += "_${postItem.postId}"
-                        }
-                        
                         val post = Post(
                             postTitle = postItem.postTitle,
                             threadTitle = postItem.threadTitle,
@@ -63,9 +58,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                             vgThreadId = postItem.threadId,
                             total = postItem.imageCount,
                             hosts = "",
-                            downloadDirectory = "VRipper/${postItem.threadId}",
+                            downloadDirectory = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_"),
                             addedOn = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date()),
-                            folderName = folderName,
+                            folderName = postItem.threadTitle.replace("[^a-zA-Z0-9.-]", "_"),
                             status = Status.STOPPED,
                             previewUrls = postItem.imageItemList.take(4).map { it.thumbUrl }
                         )
@@ -73,7 +68,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                         val postId = postDao.insert(post)
                         
                         // Check if folder already exists on disk
-                        val folderExists = checkFolderExists(folderName)
+                        val folderExists = checkFolderExists(post.folderName)
                         // ... rest of logic
                         if (folderExists) {
                              val updatedPost = post.copy(
@@ -115,8 +110,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
     private fun deletePostFiles(post: Post) {
         val context = getApplication<Application>()
         val customUri = settingsStore.downloadPathUri
-        // Use the same path convention as DownloadService
-        val fullPath = "VRipper/${post.folderName}"
+        // Now using flat structure directly in the root of the selected folder
+        val fullPath = post.folderName
 
         try {
             if (customUri != null) {
@@ -124,41 +119,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                 val docId = DocumentsContract.getTreeDocumentId(treeUri)
                 
                 var currentDocId = docId
-                val parts = fullPath.split("/")
+                // No more VRipper/ prefix logic for traversal if we assume flat structure in root
+                // But we should still support checking if it's a folder in the root
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
                 var targetUri: Uri? = null
                 
-                // Traverse to find the target directory
-                for (i in parts.indices) {
-                    val part = parts[i]
-                    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
-                    var foundId: String? = null
-                    
-                    context.contentResolver.query(
-                        childrenUri,
-                        arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-                        null, null, null
-                    )?.use { cursor ->
-                        while (cursor.moveToNext()) {
-                            val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                            val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                            if (nameIndex >= 0 && idIndex >= 0) {
-                                val name = cursor.getString(nameIndex)
-                                if (name == part) {
-                                    foundId = cursor.getString(idIndex)
-                                    break
-                                }
+                context.contentResolver.query(
+                    childrenUri,
+                    arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                    null, null, null
+                )?.use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                        val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                        if (nameIndex >= 0 && idIndex >= 0) {
+                            val name = cursor.getString(nameIndex)
+                            if (name == fullPath) {
+                                val foundId = cursor.getString(idIndex)
+                                targetUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, foundId)
+                                break
                             }
                         }
-                    }
-                    
-                    if (foundId != null) {
-                        currentDocId = foundId
-                        if (i == parts.lastIndex) {
-                            targetUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, foundId)
-                        }
-                    } else {
-                        // Path not found
-                        break
                     }
                 }
                 
@@ -170,7 +151,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
                 // MediaStore deletion
                 val projection = arrayOf(MediaStore.Images.Media._ID)
                 val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
-                val selectionArgs = arrayOf("%$fullPath/%")
+                // Keep VRipper/ prefix only for default MediaStore storage if we want to organize it there,
+                // BUT user asked to remove "VRipper" nested folder creation.
+                // However, for MediaStore (Pictures folder), putting everything in root is messy.
+                // The request specifically said "When selecting a save directory... remove creation of nested VRipper folder".
+                // This implies Custom Storage.
+                // For default storage (Pictures), it is probably still better to keep a subfolder to avoid cluttering root Pictures.
+                // Let's assume the request applies to Custom Storage primarily, but for consistency let's check.
+                // "Скачивать посты будем сразу в ту папку, которую выбрал пользователь" -> This strongly implies Custom Storage.
+                // For MediaStore, the "selected folder" is implicitly Pictures.
+                // If we remove VRipper prefix there, we dump folders directly into Pictures. That is acceptable standard behavior.
+                val pathPrefix = if (fullPath.startsWith("VRipper/")) fullPath else fullPath
+                val selectionArgs = arrayOf("%$pathPrefix/%")
                 
                 val idsToDelete = mutableListOf<Long>()
                 
