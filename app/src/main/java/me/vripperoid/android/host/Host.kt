@@ -116,32 +116,58 @@ abstract class Host(val hostName: String, val hostId: Byte) : KoinComponent {
                     if (part.isNotEmpty()) {
                         var foundId: String? = null
                         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, currentDocId)
-                        
-                        context.contentResolver.query(
-                            childrenUri,
-                            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-                            null, null, null
-                        )?.use { cursor ->
-                            while (cursor.moveToNext()) {
-                                val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                                val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                                if (nameIndex >= 0 && idIndex >= 0) {
-                                    val name = cursor.getString(nameIndex)
-                                    if (name == part) {
-                                        foundId = cursor.getString(idIndex)
-                                        break
-                                    }
+                
+                // Synchronization to prevent duplicate folder creation race condition
+                synchronized(Host::class.java) {
+                     var foundId: String? = null
+                     context.contentResolver.query(
+                        childrenUri,
+                        arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                        null, null, null
+                    )?.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                            val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                            if (nameIndex >= 0 && idIndex >= 0) {
+                                val name = cursor.getString(nameIndex)
+                                if (name == part) {
+                                    foundId = cursor.getString(idIndex)
+                                    break
                                 }
                             }
                         }
-                        
-                        if (foundId == null) {
+                    }
+                    
+                    if (foundId == null) {
+                        try {
                             val parentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, currentDocId)
                             val newDir = DocumentsContract.createDocument(context.contentResolver, parentUri, DocumentsContract.Document.MIME_TYPE_DIR, part)
                                 ?: throw HostException("Failed to create directory $part")
                             foundId = DocumentsContract.getDocumentId(newDir)
+                        } catch (e: Exception) {
+                            // Double check if it was created by another thread in the meantime
+                             context.contentResolver.query(
+                                childrenUri,
+                                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                                null, null, null
+                            )?.use { cursor ->
+                                while (cursor.moveToNext()) {
+                                    val nameIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                                    val idIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                                    if (nameIndex >= 0 && idIndex >= 0) {
+                                        val name = cursor.getString(nameIndex)
+                                        if (name == part) {
+                                            foundId = cursor.getString(idIndex)
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                            if (foundId == null) throw e
                         }
-                        currentDocId = foundId!!
+                    }
+                    currentDocId = foundId!!
+                }
                     }
                 }
                 
