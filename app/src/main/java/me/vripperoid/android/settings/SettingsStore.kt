@@ -30,6 +30,10 @@ class SettingsStore(context: Context) {
     get() = prefs.getInt(KEY_RETRY_COUNT, 3)
     set(value) { prefs.edit().putInt(KEY_RETRY_COUNT, value).apply() }
 
+  var isDarkMode: Boolean
+    get() = prefs.getBoolean(KEY_IS_DARK_MODE, true)
+    set(value) { prefs.edit().putBoolean(KEY_IS_DARK_MODE, value).apply() }
+
   companion object {
     private const val KEY_MAX_GLOBAL = "max_global"
     private const val KEY_MAX_CONCURRENT_POSTS = "max_concurrent_posts"
@@ -37,5 +41,6 @@ class SettingsStore(context: Context) {
     private const val KEY_DOWNLOAD_PATH_URI = "download_path_uri"
     private const val KEY_DELETE_FROM_STORAGE = "delete_from_storage"
     private const val KEY_RETRY_COUNT = "retry_count"
+    private const val KEY_IS_DARK_MODE = "is_dark_mode"
   }
 }

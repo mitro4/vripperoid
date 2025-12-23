@@ -73,6 +73,9 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.os.Build
 
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
+
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private val settingsStore: SettingsStore by inject()
@@ -93,8 +96,11 @@ class MainActivity : ComponentActivity() {
         checkPermissions()
         
         setContent {
-            MaterialTheme {
-                MainScreen(viewModel, settingsStore)
+            val isDarkMode = remember { mutableStateOf(settingsStore.isDarkMode) }
+            val colorScheme = if (isDarkMode.value) darkColorScheme() else lightColorScheme()
+            
+            MaterialTheme(colorScheme = colorScheme) {
+                MainScreen(viewModel, settingsStore, isDarkMode)
             }
         }
     }
@@ -131,7 +137,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
+fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get(), isDarkMode: MutableState<Boolean>) {
     var showDialog by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }
@@ -236,11 +242,11 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get()) {
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (showSettings) {
-                BackHandler {
-                    showSettings = false
-                }
-                SettingsScreen(onDismiss = { showSettings = false })
-            } else {
+            BackHandler {
+                showSettings = false
+            }
+            SettingsScreen(onDismiss = { showSettings = false }, isDarkMode = isDarkMode)
+        } else {
                 // Handle back press to exit selection mode
                 BackHandler(enabled = isSelectionMode) {
                     selectedPostIds = emptySet()
@@ -419,7 +425,7 @@ fun CryptoField(label: String, address: String, icon: androidx.compose.ui.graphi
 }
 
 @Composable
-fun SettingsScreen(onDismiss: () -> Unit) {
+fun SettingsScreen(onDismiss: () -> Unit, isDarkMode: MutableState<Boolean>) {
     val settingsStore: SettingsStore = get()
     val context = LocalContext.current
     var maxConcurrent by remember { mutableStateOf(settingsStore.maxGlobalConcurrent.toFloat()) }
@@ -518,6 +524,21 @@ fun SettingsScreen(onDismiss: () -> Unit) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = isDarkMode.value,
+                onCheckedChange = { 
+                    isDarkMode.value = it
+                    settingsStore.isDarkMode = it
+                }
+            )
+            Text("Dark Mode", style = MaterialTheme.typography.bodyLarge)
+        }
         
         Spacer(modifier = Modifier.weight(1f))
         

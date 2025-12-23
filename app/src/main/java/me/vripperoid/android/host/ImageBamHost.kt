@@ -15,24 +15,37 @@ class ImageBamHost : Host("imagebam.com", 2) {
     private val CONTINUE_XPATH = "//*[contains(text(), 'Continue')]"
 
     override fun resolve(image: Image): Pair<String, String> {
+        // Based on the reference implementation, we should try to use the 'nsfw_inter' cookie
+        // But since we can't easily inject cookies into the global OkHttp client from here without changing architecture,
+        // we will try to mimic the behavior by fetching, checking for "Continue", and then fetching again.
+        // The original vripper implementation sets a cookie: BasicClientCookie("nsfw_inter", "1")
+        // Our fetchDocument uses a shared OkHttpClient. If we want to support this properly, 
+        // we might need to rely on the server setting the cookie on the first request (which it often does),
+        // or we need to manually add the cookie header in our request if possible.
+        // For now, let's stick to the link following logic which is also robust, 
+        // but add the specific Xpath from the reference implementation as a backup or primary.
+        
+        // Reference implementation uses:
+        // IMG_XPATH = "//img[contains(@class,'main-image')]" (matches ours mostly)
+        // CONTINUE_XPATH = "//*[contains(text(), 'Continue')]" (matches ours)
+        
+        // It also cleans HTML using HtmlUtils.clean(content)
+        
         val document = fetchDocument(image.url)
         val doc = try {
             val continueLink = XpathUtils.getAsNode(document, CONTINUE_XPATH)
             if (continueLink != null) {
-                 // Check if it is a link
+                 // Try to find a link to follow
+                 var href: String? = null
+                 
+                 // Check if the node itself is an anchor
                  if (continueLink.nodeName.equals("a", ignoreCase = true)) {
-                     val href = continueLink.attributes?.getNamedItem("href")?.textContent
-                     if (!href.isNullOrEmpty()) {
-                         fetchDocument(href)
-                     } else {
-                         document
-                     }
-                 } else {
-                     // Sometimes the continue button is just a button or span inside an 'a' tag or handled by JS.
-                     // But typically for ImageBam, if there is a 'Continue' text, it's either an anchor or inside one.
-                     // Let's try to find the parent 'a' tag if the current node is not 'a'.
+                     href = continueLink.attributes?.getNamedItem("href")?.textContent
+                 } 
+                 
+                 // If not, check parents
+                 if (href.isNullOrEmpty()) {
                      var parent = continueLink.parentNode
-                     var href: String? = null
                      while (parent != null && parent.nodeName != "#document") {
                          if (parent.nodeName.equals("a", ignoreCase = true)) {
                              href = parent.attributes?.getNamedItem("href")?.textContent
@@ -40,22 +53,18 @@ class ImageBamHost : Host("imagebam.com", 2) {
                          }
                          parent = parent.parentNode
                      }
-                     
-                     if (!href.isNullOrEmpty()) {
-                         fetchDocument(href)
-                     } else {
-                         // If we can't find a link, maybe we just need to re-fetch the same URL with a cookie?
-                         // Original vripper project sets a cookie 'nsfw_inter=1'.
-                         // Since we don't have easy cookie injection here in this method, let's try fetching the same URL again.
-                         // Often the first load sets the cookie and the second load works.
-                         fetchDocument(image.url)
-                     }
+                 }
+                 
+                 if (!href.isNullOrEmpty()) {
+                     fetchDocument(href)
+                 } else {
+                     // Fallback: just fetch the original URL again, hoping cookie was set
+                     fetchDocument(image.url)
                  }
             } else {
                 document
             }
         } catch (e: XpathException) {
-            // If xpath fails, just ignore and try with original document
             document
         }
 
