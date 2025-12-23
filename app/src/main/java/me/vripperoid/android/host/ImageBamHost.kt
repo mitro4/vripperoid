@@ -69,7 +69,7 @@ class ImageBamHost : Host("imagebam.com", 2) {
         }
 
         val imgNode: Node = try {
-            XpathUtils.getAsNode(doc, IMG_XPATH)
+            XpathUtils.getAsNode(document, IMG_XPATH)
         } catch (e: XpathException) {
             throw HostException(e.message ?: "Xpath error")
         } ?: throw HostException("Xpath '$IMG_XPATH' cannot be found in '${image.url}'")
