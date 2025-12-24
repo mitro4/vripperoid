@@ -137,47 +137,25 @@ class DownloadService : Service() {
                     
                     var imageToDownload: me.vripperoid.android.domain.Image? = null
                     
-                    // A. Check active posts first (Priority FIFO)
-                    val sortedActivePostIds = activePostIds.sorted()
-                    for (postId in sortedActivePostIds) {
-                        val currentDownloadsForPost = imageDao.countDownloadingImagesForPost(postId)
-                        if (currentDownloadsForPost < maxConcurrentImagesPerPost) {
-                            val img = imageDao.getNextPendingForActivePosts(listOf(postId))
-                            if (img != null) {
-                                imageToDownload = img
-                                break // Found one
+                    // Priority 1: If we have room for MORE posts, try to pick a NEW post first.
+                    // This ensures we reach 'maxConcurrentPosts' breadth-wise before deepening existing posts.
+                    if (activePostIds.size < maxConcurrentPosts) {
+                        imageToDownload = imageDao.getNextPendingExcludePosts(activePostIds)
+                    }
+
+                    // Priority 2: If we didn't pick a new post (either full or none available), refill ACTIVE posts.
+                    if (imageToDownload == null) {
+                        val sortedActivePostIds = activePostIds.sorted()
+                        for (postId in sortedActivePostIds) {
+                            val currentDownloadsForPost = imageDao.countDownloadingImagesForPost(postId)
+                            if (currentDownloadsForPost < maxConcurrentImagesPerPost) {
+                                val img = imageDao.getNextPendingForActivePosts(listOf(postId))
+                                if (img != null) {
+                                    imageToDownload = img
+                                    break // Found one
+                                }
                             }
                         }
-                    }
-                    
-                    // B. If no image found in active posts (or they are all full/finished pending), try new posts
-                    if (imageToDownload == null && activePostIds.size < maxConcurrentPosts) {
-                        // Find next pending post that is NOT in activePostIds
-                        // We can just get next pending image. Its post ID will naturally be the next one.
-                        // We just need to verify we aren't picking an image from an active post that is "full" (already checked above)
-                        // Actually, getNextPending returns ordered by PostID.
-                        // If the top pending image belongs to an active post that is "full" (hit concurrency limit), we should SKIP it.
-                        // But getNextPending doesn't know about limits.
-                        
-                        // We need a query: Get next pending image where PostID NOT IN (full_active_posts)
-                        // Construct list of full active posts
-                        val fullActivePostIds = sortedActivePostIds.filter { 
-                            imageDao.countDownloadingImagesForPost(it) >= maxConcurrentImagesPerPost 
-                        }
-                        
-                        // We also need to exclude active posts that are NOT full but have no pending images (waiting for downloads to finish),
-                        // effectively they are handled in step A (returned null).
-                        // So we essentially want pending images from posts that are EITHER (Active & Not Full) OR (Not Active).
-                        // Step A covered (Active & Not Full).
-                        // So here we want (Not Active).
-                        
-                        // So: Get next pending image where PostID NOT IN (activePostIds)
-                        // But wait, if an active post has pending images but is full, we shouldn't pick from it.
-                        // If an active post has NO pending images, we can't pick from it.
-                        // So simply: Get next pending image where PostID NOT IN (activePostIds)
-                        
-                        // We need a new DAO method for this.
-                        imageToDownload = imageDao.getNextPendingExcludePosts(activePostIds)
                     }
                     
                     if (imageToDownload != null) {
