@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Environment
 import android.os.IBinder
 import kotlinx.coroutines.*
+import java.util.concurrent.Executors
 import me.vripperoid.android.data.ImageDao
 import me.vripperoid.android.data.PostDao
 import me.vripperoid.android.domain.Status
@@ -34,6 +35,10 @@ class DownloadService : Service() {
     private val postImgHost: PostImgHost by inject()
     private val turboImageHost: TurboImageHost by inject()
     private val viprImHost: ViprImHost by inject()
+
+    // Create a dedicated dispatcher for downloads to avoid starving the main IO dispatcher (used for DB/Service loop)
+    // Using a cached thread pool allows scaling up to the requested concurrency limit (e.g. 20 posts * 4 images = 80 threads)
+    private val downloadDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var isRunning = false
@@ -81,6 +86,7 @@ class DownloadService : Service() {
         super.onDestroy()
         unregisterReceiver(stopReceiver)
         scope.cancel()
+        downloadDispatcher.close()
     }
 
     private fun startDownloading() {
@@ -189,7 +195,7 @@ class DownloadService : Service() {
                                 postDao.update(post)
                             }
                             
-                            val job = launch {
+                            val job = launch(downloadDispatcher) {
                                 val currentJobs = activeJobMap.computeIfAbsent(image.postEntityId) { mutableListOf() }
                                 synchronized(currentJobs) {
                                     currentJobs.add(coroutineContext.job)
