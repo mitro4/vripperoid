@@ -32,4 +32,7 @@ interface PostDao {
 
     @Query("SELECT COUNT(*) FROM post WHERE vgPostId = :vgPostId")
     suspend fun countByVgPostId(vgPostId: Long): Int
+
+    @Query("UPDATE post SET status = 'PENDING' WHERE status = 'DOWNLOADING'")
+    suspend fun resetAllDownloadingToPending()
 }

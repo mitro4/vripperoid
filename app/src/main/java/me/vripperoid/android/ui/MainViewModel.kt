@@ -263,17 +263,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
 
     fun startDownload(post: Post) {
         viewModelScope.launch(Dispatchers.IO) {
-            val updatedPost = post.copy(status = Status.PENDING)
-            postDao.update(updatedPost)
+            // 1. Reset unfinished images (ERROR, STOPPED, DOWNLOADING, NOT_FULL_FINISHED, PENDING) to PENDING
+            // Exclude already FINISHED and ALREADY_DOWNLOADED images
+            imageDao.resetStatusByPostId(
+                post.id, 
+                Status.PENDING, 
+                listOf(Status.FINISHED, Status.ALREADY_DOWNLOADED)
+            )
+
+            // 2. Check if we actually have anything to download
+            val pendingCount = imageDao.countPendingByPostId(post.id)
             
-            // Also update all images for this post to PENDING
-            // Note: In a real app we might want to check if they are already finished
-            // But for simplicity here, we assume we want to retry/start all stopped/pending ones.
-            // A more complex query in Dao might be better: "UPDATE image SET status = PENDING WHERE postEntityId = :id AND status != FINISHED"
-            // imageDao.updateStatusByPostId(post.id, Status.PENDING, Status.FINISHED)
-            // We should use a more specific update to only reset STOPPED/ERROR -> PENDING
-            // But the generic one works for "Restart/Resume".
-            imageDao.updateStatusByPostId(post.id, Status.PENDING, Status.FINISHED)
+            if (pendingCount > 0) {
+                // If there are pending images, set post to PENDING to trigger service
+                val updatedPost = post.copy(status = Status.PENDING)
+                postDao.update(updatedPost)
+            } else {
+                // All images are finished (or we have 0 images?)
+                // If total > 0 and pending == 0, then we are done.
+                if (post.total > 0) {
+                    val errorCount = imageDao.countErrorByPostId(post.id)
+                    val newStatus = if (errorCount > 0) Status.NOT_FULL_FINISHED else Status.FINISHED
+                    
+                    // Only update if status is different to avoid unnecessary DB writes/UI flickers
+                    if (post.status != newStatus) {
+                        postDao.update(post.copy(status = newStatus))
+                    }
+                }
+            }
         }
     }
     

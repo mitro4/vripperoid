@@ -40,8 +40,11 @@ interface ImageDao {
     @Update
     suspend fun update(image: Image)
 
-    @Query("UPDATE image SET status = :newStatus WHERE postEntityId = :postId AND status != :excludeStatus")
-    suspend fun updateStatusByPostId(postId: Long, newStatus: Status, excludeStatus: Status)
+    @Query("UPDATE image SET status = :newStatus WHERE postEntityId = :postId AND status NOT IN (:excludeStatuses)")
+    suspend fun resetStatusByPostId(postId: Long, newStatus: Status, excludeStatuses: List<Status>)
+
+    @Query("UPDATE image SET status = 'PENDING' WHERE status = 'DOWNLOADING'")
+    suspend fun resetAllDownloadingToPending()
 
     @Query("SELECT COUNT(*) FROM image WHERE postEntityId = :postId AND status = 'PENDING'")
     suspend fun countPendingByPostId(postId: Long): Int
