@@ -142,8 +142,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.NightlightRound
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
