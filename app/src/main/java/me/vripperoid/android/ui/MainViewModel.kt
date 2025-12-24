@@ -228,9 +228,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), K
             // The safe bet is: Update PENDING -> STOPPED.
             // The actively downloading images will finish (or fail) and update status to FINISHED/ERROR.
             // Since no more PENDING images exist (they are STOPPED), the service won't pick up new ones for this post.
-            imageDao.updateStatusByPostId(post.id, Status.STOPPED, Status.FINISHED)
+            imageDao.resetStatusByPostId(
+                post.id, 
+                Status.STOPPED, 
+                listOf(Status.FINISHED, Status.ALREADY_DOWNLOADED)
+            )
             
-            // Note: Currently imageDao.updateStatusByPostId updates ALL non-excluded status.
+            // Note: Currently imageDao.resetStatusByPostId updates ALL non-excluded status.
             // If we have DOWNLOADING status images, and we update them to STOPPED here, 
             // the Service will eventually try to update them to FINISHED.
             // DB write conflict might happen but usually last write wins.
