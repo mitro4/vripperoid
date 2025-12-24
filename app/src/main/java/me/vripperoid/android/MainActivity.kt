@@ -1,4 +1,6 @@
 package me.vripperoid.android
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.NightlightRound
 
 import android.content.Intent
 import android.os.Bundle
@@ -76,6 +78,11 @@ import android.os.Build
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
+import androidx.compose.ui.graphics.toArgb
+
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private val settingsStore: SettingsStore by inject()
@@ -135,6 +142,9 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.NightlightRound
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get(), isDarkMode: MutableState<Boolean>) {
@@ -178,7 +188,6 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get(), i
     }
 
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
         topBar = {
             if (isSelectionMode) {
                  TopAppBar(
@@ -222,6 +231,15 @@ fun MainScreen(viewModel: MainViewModel, settingsStore: SettingsStore = get(), i
                 TopAppBar(
                     title = { Text("VRipperoid") },
                     actions = {
+                        IconButton(onClick = { 
+                            isDarkMode.value = !isDarkMode.value
+                            settingsStore.isDarkMode = isDarkMode.value
+                        }) {
+                            Icon(
+                                if (isDarkMode.value) Icons.Filled.WbSunny else Icons.Filled.NightlightRound,
+                                contentDescription = "Toggle Theme"
+                            )
+                        }
                         IconButton(onClick = { showInfo = true }) {
                             Icon(Icons.Filled.Info, contentDescription = "Info")
                         }
@@ -566,7 +584,7 @@ fun PostItem(
     val context = LocalContext.current
     val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
     
-    Card(
+    OutlinedCard(
         modifier = Modifier
             .padding(8.dp)
             .fillMaxWidth()
@@ -574,7 +592,8 @@ fun PostItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+        colors = CardDefaults.outlinedCardColors(containerColor = backgroundColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = post.folderName, style = MaterialTheme.typography.titleMedium)
