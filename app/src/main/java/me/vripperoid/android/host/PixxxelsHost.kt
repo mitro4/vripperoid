@@ -7,28 +7,32 @@ import me.vripperoid.android.util.XpathUtils
 
 class PixxxelsHost : Host("pixxxels.cc", 12) {
     private val TAG = "PixxxelsHost"
-    private val IMG_XPATH = "//*[local-name()='a' and @id='download']"
-    private val TITLE_XPATH = "//*[contains(@class,'imagename')]"
+    // Since pixxxels.cc redirects to postimg.cc, we use PostImg XPaths
+    private val TITLE_XPATH = "//span[contains(@class,'imagename')]"
+    private val IMG_XPATH = "//a[@id='download']"
 
     override fun resolve(image: Image): Pair<String, String> {
         val document = fetchDocument(image.url)
-        val imgNode = try {
+        
+        val titleNode = try {
+            XpathUtils.getAsNode(document, TITLE_XPATH)
+        } catch (e: XpathException) {
+            null
+        }
+
+        val urlNode = try {
             XpathUtils.getAsNode(document, IMG_XPATH)
         } catch (e: XpathException) {
             throw HostException(e.message ?: "Xpath error")
         } ?: throw HostException("Xpath '$IMG_XPATH' cannot be found in '${image.url}'")
 
-        val titleNode = try {
-            XpathUtils.getAsNode(document, TITLE_XPATH)
-        } catch (e: XpathException) {
-            throw HostException(e.message ?: "Xpath error")
-        } ?: throw HostException("Xpath '$TITLE_XPATH' cannot be found in '${image.url}'")
-
         return try {
-            val imgTitle = titleNode.textContent.trim()
-            val imgUrl = imgNode.attributes.getNamedItem("href").textContent.trim()
-            val name = if (imgTitle.isEmpty()) imgUrl.substring(imgUrl.lastIndexOf('/') + 1) else imgTitle
-            Pair(name, imgUrl)
+            var imgTitle = titleNode?.textContent?.trim() ?: ""
+            val imgUrl = urlNode.attributes.getNamedItem("href").textContent.trim()
+            if (imgTitle.isEmpty()) {
+                imgTitle = imgUrl.substring(imgUrl.lastIndexOf('/') + 1)
+            }
+            Pair(imgTitle, imgUrl)
         } catch (e: Exception) {
             throw HostException("Unexpected error occurred: ${e.message}")
         }
