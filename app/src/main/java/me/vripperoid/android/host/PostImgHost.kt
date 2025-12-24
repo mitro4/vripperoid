@@ -19,13 +19,21 @@ class PostImgHost : Host("postimg.cc", 13) {
 
         var imgUrl: String? = null
         
-        // Strategy 1: Download button
+        // Strategy 1: Download button by Text (User requested)
         try {
-            val node = XpathUtils.getAsNode(document, "//a[@id='download']")
+            val node = XpathUtils.getAsNode(document, "//a[contains(., 'Download original image')]")
             imgUrl = node?.attributes?.getNamedItem("href")?.textContent
         } catch (e: Exception) { }
 
-        // Strategy 2: Main Image (zoom class)
+        // Strategy 2: Download button by ID (Safe local-name)
+        if (imgUrl.isNullOrEmpty()) {
+            try {
+                val node = XpathUtils.getAsNode(document, "//*[local-name()='a' and @id='download']")
+                imgUrl = node?.attributes?.getNamedItem("href")?.textContent
+            } catch (e: Exception) { }
+        }
+
+        // Strategy 3: Main Image (zoom class)
         if (imgUrl.isNullOrEmpty()) {
             try {
                 val node = XpathUtils.getAsNode(document, "//img[contains(@class,'zoom')]")
