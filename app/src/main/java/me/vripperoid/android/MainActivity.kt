@@ -543,19 +543,6 @@ fun SettingsScreen(onDismiss: () -> Unit, isDarkMode: MutableState<Boolean>) {
         )
         
         Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Checkbox(
-                checked = isDarkMode.value,
-                onCheckedChange = { 
-                    isDarkMode.value = it
-                    settingsStore.isDarkMode = it
-                }
-            )
-            Text("Dark Mode", style = MaterialTheme.typography.bodyLarge)
-        }
         
         Spacer(modifier = Modifier.weight(1f))
         
